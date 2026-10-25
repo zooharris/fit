@@ -17,7 +17,9 @@ const BRAND = {
     hip: { x: 475.3, y: 254.2 }, knee: { x: 629.2, y: 324.6 }, ankle: { x: 574.7, y: 477.1 }, heel: { x: 556, y: 494 }, toe: { x: 641, y: 511 },
   },
   bike: { rear: { x: 412.4, y: 514.8 }, front: { x: 772.4, y: 514.8 }, r: 122, bb: { x: 560, y: 540 }, spindle: { x: 612, y: 505 },
-    seat: { x: 468, y: 302 }, saddle: { x: 478, y: 286 }, headTop: { x: 746, y: 262 }, headBot: { x: 762, y: 322 } },
+    seat: { x: 468, y: 302 }, saddle: { x: 478, y: 286 }, headTop: { x: 746, y: 262 }, headBot: { x: 762, y: 322 },
+    // 2.0 marks: the saddle's front tip and the top of the hood where the hand rests.
+    saddleNose: { x: 514, y: 288 }, barTop: { x: 812, y: 232 } },
 };
 
 /** Pictogram rider: even, rounded strokes, head set apart from the body. */

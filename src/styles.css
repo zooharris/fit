@@ -395,3 +395,102 @@ details.more[open] summary svg { transform: rotate(90deg); }
 details.more summary svg { width: 14px; height: 14px; transition: transform .15s; }
 .compat { max-width: 560px; margin: 10vh auto; padding: 24px; }
 .kbd { font-size: 12px; border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; color: var(--ink-2); }
+
+/* ==========================================================================
+   2.0 Part B — the full-screen fit (place → mark → ride), Home, onboarding
+   The recorded frame is shown whole (contain): on a phone in landscape the
+   frame's 16:9 leaves narrow side strips where the controls sit; nothing on
+   screen hides part of what is recorded.
+   ========================================================================== */
+.fit { position: fixed; inset: 0; z-index: 50; background: #000; color: #fff; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; font-size: 15px; }
+.fit .frame { position: absolute; }
+.fit .frame video, .fit .frame canvas.still { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.fit .frame canvas.ov { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.fit .silwrap, .fit .silwrap svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.fit .bigcount { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: min(26vw, 30vh); font-weight: 800; color: rgba(255,255,255,.92); text-shadow: 0 4px 30px rgba(0,0,0,.55); pointer-events: none; }
+.fit .loupe { position: absolute; width: 132px; height: 132px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 6px 20px rgba(0,0,0,.55); overflow: hidden; pointer-events: none; z-index: 6; background: #000; }
+.fit .loupe canvas { width: 100%; height: 100%; }
+
+.fit .corner { position: absolute; z-index: 5; display: flex; gap: 8px; }
+.fit .corner.tl { top: calc(env(safe-area-inset-top, 0px) + 10px); left: calc(env(safe-area-inset-left, 0px) + 10px); flex-direction: column; align-items: flex-start; max-width: min(46vw, 360px); }
+.fit .corner.tr { top: calc(env(safe-area-inset-top, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 10px); flex-wrap: wrap; justify-content: flex-end; max-width: 40vw; }
+.fit .corner.bl { bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); left: calc(env(safe-area-inset-left, 0px) + 10px); flex-direction: column; align-items: flex-start; }
+.fit .corner.br { bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); right: calc(env(safe-area-inset-right, 0px) + 10px); flex-wrap: wrap; justify-content: flex-end; align-items: center; max-width: 60vw; }
+.fit .pill { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 8px 13px; border-radius: 999px; background: rgba(10, 18, 32, .72); border: 1px solid rgba(255,255,255,.16); color: #fff; font-size: 14px; font-weight: 600; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.fit .btn-pill { cursor: pointer; }
+.fit .btn-pill svg { width: 18px; height: 18px; }
+.fit .pill.rec { background: rgba(240, 80, 110, .92); border-color: transparent; }
+.fit .pill.rec .dot { animation: blink 1s infinite; }
+.fit .lights { display: flex; flex-wrap: wrap; gap: 6px; }
+.fit .light { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 5px 11px; border-radius: 999px; background: rgba(10, 18, 32, .72); border: 1px solid rgba(255,255,255,.14); font-size: 14px; font-weight: 600; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.fit .light i { width: 10px; height: 10px; border-radius: 50%; background: #8A96A8; flex: 0 0 auto; }
+.fit .light.ok i { background: #34C77B; box-shadow: 0 0 0 3px rgba(52,199,123,.25); }
+.fit .light.warn i { background: #F2C94C; box-shadow: 0 0 0 3px rgba(242,201,76,.25); }
+.fit .light.warn { color: #FBE6A6; }
+
+.fit .status { position: absolute; z-index: 4; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); max-width: min(56vw, 560px); text-align: center; display: flex; flex-direction: column; gap: 2px; padding: 9px 16px; border-radius: 16px; background: rgba(10, 18, 32, .78); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); pointer-events: none; }
+.fit .status #fx-big { font-size: 18px; font-weight: 700; }
+.fit .status #fx-small { font-size: 14px; color: #C9D3E2; }
+.fit .status[hidden] { display: none; }
+.fit .btn { --bg-3: rgba(24, 35, 56, .88); --line-2: rgba(255,255,255,.22); --ink: #fff; color: #fff; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.fit .btn.primary { color: #1A0B02; background: #FF6A1A; border-color: #FF6A1A; }
+.fit .btn.quiet { color: #DCE3EE; background: rgba(10,18,32,.5); }
+
+.fit .corner { pointer-events: none; }
+.fit .corner button, .fit .corner .btn, .fit .corner a { pointer-events: auto; }
+.fit .lights[hidden] { display: none; }
+.fit .markpill { position: absolute; z-index: 5; top: calc(env(safe-area-inset-top, 0px) + 60px); left: calc(env(safe-area-inset-left, 0px) + 10px); max-width: min(42vw, 360px); pointer-events: none;
+  display: grid; grid-template-columns: 86px 1fr; gap: 10px; align-items: center; padding: 8px 12px 8px 8px; border-radius: 14px; background: rgba(10, 18, 32, .82); border: 1px solid rgba(255,255,255,.16); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); --ink: #E9EEF6; --bg-2: #111A2B; --line-2: #2B3D5B; --logo-bike: #6F7F98; --accent: #FF6A1A; }
+.fit .markpill.right { left: auto; right: calc(env(safe-area-inset-right, 0px) + 10px); top: calc(env(safe-area-inset-top, 0px) + 60px); }
+.fit .markpill[hidden] { display: none; }
+.fit .markpill svg { width: 86px; height: 86px; border-radius: 10px; background: rgba(255,255,255,.06); }
+.fit .markpill b { display: block; font-size: 15px; }
+.fit .markpill span { display: block; font-size: 14px; color: #C9D3E2; line-height: 1.35; }
+
+.fit .result-card { position: absolute; z-index: 5; right: calc(env(safe-area-inset-right, 0px) + 10px); top: calc(env(safe-area-inset-top, 0px) + 60px); width: min(420px, 46vw); max-height: calc(100% - 140px); overflow: auto; padding: 14px 16px; border-radius: 16px; background: rgba(10, 18, 32, .9); border: 1px solid rgba(255,255,255,.16); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.fit .result-card h3 { font-size: 17px; margin-bottom: 8px; }
+.fit .rrow { display: grid; grid-template-columns: 12px 74px 1fr; gap: 8px; align-items: center; font-size: 14px; padding: 3px 0; }
+.fit .rrow i { width: 10px; height: 10px; border-radius: 50%; background: #34C77B; }
+.fit .rrow.warn i { background: #F2C94C; }
+.fit .rrow span { color: #C9D3E2; }
+.fit .bike-nums { margin-top: 8px; font-size: 14px; color: #E9EEF6; line-height: 1.45; }
+.fit .fixes { margin-top: 8px; padding-left: 18px; font-size: 14px; color: #FBE6A6; display: flex; flex-direction: column; gap: 4px; }
+
+.fit .question { position: absolute; z-index: 7; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 70px); width: min(560px, 92vw); padding: 16px; border-radius: 18px; background: rgba(10, 18, 32, .92); border: 1px solid rgba(255,255,255,.18); text-align: center; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.fit .question p { font-size: 17px; font-weight: 600; }
+.fit .question .qrow { display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+.fit .question .qrow .btn { min-width: 160px; }
+.fit .question .qhint { font-size: 14px; color: #C9D3E2; font-weight: 500; margin-top: 10px; }
+.fit .nudge { position: absolute; z-index: 4; left: 50%; top: 50%; transform: translate(-50%, calc(-50% - 34vh)); display: inline-flex; gap: 8px; align-items: center; padding: 8px 14px; border-radius: 999px; background: rgba(255,106,26,.92); color: #1A0B02; font-weight: 700; font-size: 14px; white-space: nowrap; }
+.fit .nudge svg { width: 18px; height: 18px; }
+.fit .fadeable, .fit .status { transition: opacity .3s; }
+.fit.faded .fadeable { opacity: 0; pointer-events: none; }
+@media (orientation: portrait) {
+  .fit .status { bottom: auto; top: calc(50% + 30vw + 16px); max-width: 92vw; }
+  .fit .corner.br { max-width: 92vw; }
+  .fit .result-card { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); width: calc(100vw - 20px); max-height: 46vh; }
+  .fit .corner.tl { max-width: 70vw; }
+}
+@media (max-height: 430px) {
+  .fit .markpill { grid-template-columns: 52px 1fr; padding: 6px 10px 6px 6px; max-width: 34vw; }
+  .fit .markpill svg { width: 52px; height: 52px; }
+  .fit .markpill span { display: none; }
+  .fit .pill { min-height: 36px; padding: 6px 11px; }
+}
+
+/* Home */
+.rider-card { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.rider-card .title { font-weight: 700; font-size: 18px; }
+.rider-card .sub { font-size: 13px; color: var(--ink-2); }
+.rider-card .grow { flex: 1; min-width: 0; }
+.main > .banner { margin-bottom: 14px; }
+.main > .reco { margin-bottom: 14px; }
+.start-fit { margin: 4px 0 12px; }
+
+/* Onboarding */
+.intro { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; padding-top: 8px; }
+.intro-art { border-radius: var(--radius); border: 1px solid var(--line); background: var(--bg-2); padding: 10px; }
+.intro-art svg { display: block; width: 100%; height: auto; max-height: 300px; }
+.intro-icon { display: flex; justify-content: center; padding: 30px; }
+.intro-icon svg { width: 120px; height: 120px; max-height: none; border-radius: 26px; }
+.intro h1 { margin-top: 6px; }

@@ -48,43 +48,61 @@ function renderWelcome(main) {
 
 /* ---------- home ---------- */
 route('/', async (main) => {
+  if (!Settings.v.introSeen) { go('#/intro'); return; }
   if (!S.file) { renderWelcome(main); return; }
   const r = rider();
   if (!r) { go('#/rider/new'); return; }
   const sessions = r.sessions.slice().sort((a, b) => (a.created < b.created ? 1 : -1));
   const last = sessions[0];
-  let lastCard = '';
+  let changeCard = '';
   if (last) {
     const res = sessionResults(r, last);
     const rec = res && res.recommendation && res.recommendation.current;
-    lastCard = `
-      <div class="panel ${rec ? 'accent' : ''} reco">
-        <div class="eyebrow"><span class="caption">Latest fit · ${esc(fmtDate(last.created))}</span>${last.sample ? '<span class="tag teal">Sample</span>' : ''}</div>
-        ${rec ? `<div class="action">${esc(rec.text)}</div><p class="why">${esc(rec.why)}</p>` : res ? `<div class="action" style="color:var(--good)">Saddle position is in range</div><p class="why">${res.recommendation && res.recommendation.later.length ? 'Reach, drop and the other checks come in the next version; see the results for the measurements.' : 'Your measurements are within the target ranges for your bike and riding style.'}</p>` : '<p class="why">This session has no results yet.</p>'}
-        <div class="btn-row">
-          ${rec ? `<a class="btn primary" href="#/session/new?retest=${last.id}">${icon('refresh')}I've made the change — retest</a>` : `<a class="btn primary" href="#/session/new">${icon('camera')}New fit session</a>`}
-          <a class="btn" href="#/session/${last.id}">See results</a>
-        </div>
+    const stillToDo = rec && rec.history && rec.history.status === 'notMade';
+    changeCard = `
+      <div class="panel ${rec && !stillToDo ? 'accent' : ''} reco">
+        <div class="eyebrow"><span class="caption">${rec ? (stillToDo ? 'Still to do' : rec.kind === 'stop' ? 'Time for a professional' : 'Your next change') : 'Latest fit'} · ${esc(fmtDate(last.created))}</span>${last.sample ? '<span class="tag teal">Sample</span>' : ''}</div>
+        ${rec ? `<div class="action">${esc(rec.text)}</div><p class="why">${esc(rec.why)}</p>` : res ? `<div class="action" style="color:var(--good)">Saddle position is in range</div><p class="why">Nothing to change on the saddle.</p>` : '<p class="why">This session has no results yet.</p>'}
+        <div class="btn-row">${rec && rec.kind !== 'stop' && !last.sample ? `<a class="btn" href="#/session/new?retest=${last.id}">${icon('refresh')}Retest</a>` : ''}<a class="btn" href="#/session/${last.id}">Results</a></div>
       </div>`;
   }
   main.innerHTML = `
     ${compatBanners()}
-    <div class="page-head"><div><h1>${esc(r.name)}</h1><div class="sub">${esc(bikeSummary(r))}</div></div>
-      <div class="btn-row"><a class="btn sm" href="#/rider/${r.id}">${icon('edit')}Edit profile</a></div></div>
-    ${unexported() ? `<div class="banner warn" style="margin-bottom:14px">${icon('alert')}<div class="grow"><b>Not exported yet.</b> Changes since the last export are only on this device; the browser can clear its storage. Export to keep a permanent copy.</div><button class="btn sm" id="h-export">${icon('download')}Export</button></div>` : ''}
-    ${CAPS.ios && !CAPS.standalone && !S.meta.hideInstallTip ? `<div class="banner info" style="margin-bottom:14px">${icon('info')}<div class="grow">Tip: tap <b>Share → Add to Home Screen</b>. Tango Fitter then opens full screen, and iOS keeps its storage instead of clearing it after a week without use.</div><button class="btn sm quiet" id="h-tip">Dismiss</button></div>` : ''}
-    ${last ? lastCard : `
-      <div class="panel accent">
-        <div class="caption">Your first fit</div>
-        <h2 style="margin:6px 0 8px">Ready when you are</h2>
-        <p class="muted">You'll answer a few questions, set the phone up beside your bike, pedal for about a minute while the app guides you by voice, then tap six points on the bike so the app can measure in ${Settings.v.units === 'imperial' ? 'inches' : 'millimetres'}.</p>
-        <div class="btn-row" style="margin-top:14px"><a class="btn primary lg" href="#/session/new">${icon('camera')}Start a fit session</a><a class="btn quiet" href="#/help">How it works</a></div>
-      </div>`}
-    ${sessions.length ? `<div class="section"><div class="section-head"><h2>Recent sessions</h2><a class="btn sm quiet" href="#/history">All history ${icon('chevR')}</a></div>
-      <div class="list">${sessions.slice(0, 4).map((s) => sessionRow(r, s)).join('')}</div></div>` : ''}
-    ${last ? `<div class="section"><a class="btn" href="#/session/new">${icon('camera')}New fit session</a></div>` : ''}`;
+    <div class="panel rider-card">
+      <span class="avatar">${esc(initials(r.name))}</span>
+      <div class="grow"><div class="title">${esc(r.name)}</div><div class="sub">${esc(bikeSummary(r))}</div></div>
+      <a class="btn sm" href="#/rider/${r.id}">${icon('edit')}Edit</a>
+    </div>
+    ${unexported() ? `<div class="banner warn">${icon('alert')}<div class="grow"><b>Not exported yet.</b> The browser can clear its storage; export to keep a permanent copy.</div><button class="btn sm" id="h-export">${icon('download')}Export</button></div>` : ''}
+    ${changeCard}
+    <a class="btn primary lg block start-fit" href="#/session/new">${icon('camera')}Start a fit</a>
+    ${!last ? `<p class="small muted">Set the phone beside your bike, mark eight points on the bike, then pedal for about a minute while the app guides you by voice. Fitting yourself or helping a friend, it works the same way.</p>` : ''}
+    ${sessions.length ? `<div class="section"><div class="section-head"><h2>Recent sessions</h2><a class="btn sm quiet" href="#/sessions">All sessions ${icon('chevR')}</a></div>
+      <div class="list">${sessions.slice(0, 3).map((x) => sessionRow(r, x)).join('')}</div></div>` : ''}`;
   const ex = $('#h-export', main); if (ex) ex.onclick = () => exportFlow();
-  const tip = $('#h-tip', main); if (tip) tip.onclick = async () => { S.meta.hideInstallTip = true; await saveMeta(); render(); };
+}, { nav: 'fit' });
+
+/* ---------- onboarding: three screens, first run and from Help ---------- */
+route('/intro', async (main, { query }) => {
+  const i = Math.max(0, Math.min(2, Number(query.get('i') || 0)));
+  const screens = [
+    { art: SETUP_ART.rig(), title: 'What you need', text: ['A trainer or rollers, a phone stand or shelf, and 2.5 to 3 metres of room beside the bike.', 'Sound on. Fit yourself, or help a friend: it works both ways.'] },
+    { art: riderSVG({ angles: true, label: 'Rider on a bike with angles measured' }), title: 'How a fit goes', text: ['Place the phone so the bike sits in the outline, then mark eight points on the bike.', 'Ride for about a minute while the app talks you through it. You get one change to make, then a retest to check it.'] },
+    { art: `<div class="intro-icon">${logoIconSVG(120)}</div>`, title: CAPS.ios ? 'Add it to your Home Screen' : 'Your fits stay with you', text: CAPS.ios ? ['In Safari, tap Share, then Add to Home Screen. Tango Fitter opens full screen and iOS keeps its storage.', 'Your fits stay on this device; export the fit file to keep a permanent copy.'] : ['Everything stays on this device. Nothing is uploaded.', 'Export the fit file to keep a permanent copy, and open it on any phone, tablet or computer.'] },
+  ];
+  const sc = screens[i];
+  const done = async () => { Settings.set('introSeen', true); go(query.get('from') === 'help' ? '#/help' : '#/'); };
+  main.innerHTML = `<div class="intro">
+    <div class="progress-dots">${screens.map((_, k) => `<i class="${k <= i ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="intro-art">${sc.art}</div>
+    <h1>${esc(sc.title)}</h1>
+    ${sc.text.map((t) => `<p class="muted">${esc(t)}</p>`).join('')}
+    <div class="btn-row">${i < 2 ? `<button class="btn primary lg" id="in-next">Next ${icon('chevR')}</button><button class="btn quiet" id="in-skip">Skip</button>` : `<button class="btn primary lg" id="in-done">Get started</button>`}</div>
+  </div>`;
+  const from = query.get('from') ? `&from=${query.get('from')}` : '';
+  const nx = $('#in-next', main); if (nx) nx.onclick = () => go(`#/intro?i=${i + 1}${from}`);
+  const sk = $('#in-skip', main); if (sk) sk.onclick = done;
+  const dn = $('#in-done', main); if (dn) dn.onclick = done;
 }, { nav: 'fit' });
 
 function sessionRow(r, s, showRider) {
@@ -109,10 +127,18 @@ function sessionAnalysis(s) {
   S.cache.set(s.id, a);
   return a;
 }
+/** The rider's earlier sessions, oldest first, for the same hand position: what each recommended and measured. */
+function historyFor(r, s) {
+  const hand = (s.clips[0] || {}).hand;
+  return r.sessions
+    .filter((x) => x.id !== s.id && !x.sample && x.created < (s.created || '9') && x.results && (x.clips[0] || {}).hand === hand)
+    .sort((a, b) => (a.created < b.created ? -1 : 1))
+    .map((x) => TF.historyEntry(x.results, x.bikeMeasures, x.created));
+}
 function sessionResults(r, s) {
   const a = sessionAnalysis(s);
   if (!a || !a.ok) return null;
-  const res = TF.buildResults(a, s.profile || r.profile, (s.clips[0] || {}).hand, s.discomfort, Settings.v.units);
+  const res = TF.buildResults(a, s.profile || r.profile, (s.clips[0] || {}).hand, s.discomfort, Settings.v.units, { history: historyFor(r, s), bikeMeasures: s.bikeMeasures });
   res.cadence = a.cadence; res.strokes = a.strokes.length;
   return res;
 }
@@ -223,18 +249,19 @@ route('/rider/:id', async (main, { id }) => {
 }, { needsFile: true, nav: 'fit' });
 
 /* ---------- history ---------- */
-route('/history', async (main) => {
+route('/history', async () => { go('#/sessions'); });
+route('/sessions', async (main) => {
   const r = rider();
   const showAll = S.meta.historyAll && S.file.riders.length > 1;
   const items = (showAll ? allSessions() : (r ? r.sessions.map((s) => ({ rider: r, session: s })) : []))
     .sort((a, b) => (a.session.created < b.session.created ? 1 : -1));
   main.innerHTML = `
-    <div class="page-head"><div><h1>History</h1><div class="sub">${showAll ? 'Every rider in this file' : esc(r ? r.name : '')} · ${plural(items.length, 'session')}</div></div>
+    <div class="page-head"><div><h1>Sessions</h1><div class="sub">${showAll ? 'Every rider in this file' : esc(r ? r.name : '')} · ${plural(items.length, 'session')}</div></div>
       ${S.file.riders.length > 1 ? `<div class="seg" id="hs"><button data-v="one">${esc(r ? r.name : 'This rider')}</button><button data-v="all">All riders</button></div>` : ''}</div>
     ${items.length ? `<div class="list">${items.map((x) => sessionRow(x.rider, x.session, showAll)).join('')}</div>`
       : `<div class="empty panel">${icon('history')}<p>No sessions yet.</p><a class="btn primary" style="margin-top:12px" href="#/session/new">${icon('camera')}Start a fit session</a></div>`}`;
   $$('#hs button', main).forEach((b) => { b.classList.toggle('on', (b.dataset.v === 'all') === !!showAll); b.onclick = async () => { S.meta.historyAll = b.dataset.v === 'all'; await saveMeta(); render(); }; });
-}, { needsFile: true, nav: 'history' });
+}, { needsFile: true, nav: 'sessions' });
 
 /* ---------- settings ---------- */
 route('/settings', async (main) => {
@@ -313,23 +340,27 @@ route('/settings', async (main) => {
 route('/help', async (main) => {
   main.innerHTML = `<div class="help">
     <div class="page-head"><div><h1>Help</h1><div class="sub">How a fit works, and how to get good measurements.</div></div></div>
-    <div class="panel"><b>In short:</b> <span class="muted">set the bike on a trainer, stand the phone 2.5–3 m away pointing square at the bike, pedal steadily while the app records, tap six points on the bike, then make the one change it suggests and retest.</span></div>
-    <h2>Setting up</h2>
+    <div class="panel"><b>In short:</b> <span class="muted">put the bike on a trainer, stand the phone beside it so the bike sits in the outline on screen, mark eight points on the bike, then ride for about a minute while the app talks you through it. Make the one change it suggests, then retest. Fitting yourself or helping a friend, it works the same way.</span>
+      <div style="margin-top:10px"><a class="btn sm" href="#/intro?from=help">Show the introduction again</a></div></div>
+    <h2>Getting ready</h2>
     <ul>
-      <li><b>Trainer.</b> The bike must stay still and level for the whole recording. A rear-wheel or direct-drive trainer, or rollers with a front wheel riser, all work. Level the bike front to back.</li>
-      <li><b>Which side.</b> Film the non-drive side (the side without the chainring) so the chainring does not hide your foot.</li>
-      <li><b>Camera.</b> Landscape, 2.5–3 m away, pointing straight at the side of the bike, lens about level with the top of the wheels, and the phone level (not tilted up or down). Your whole body and both wheels must be in the frame.</li>
-      <li><b>Clothing and light.</b> Fitted clothing in a colour that stands out from the background; no baggy shorts or jackets. Light from the camera's side, not behind you.</li>
-      <li><b>Sound.</b> Volume up and, on iPhone, the silent switch off. The app talks you through the recording so you don't need to look at the screen.</li>
+      <li><b>Trainer.</b> The bike must stay still and level. A rear-wheel or direct-drive trainer, or rollers with a front-wheel riser, all work.</li>
+      <li><b>Which side.</b> Film the side without the chainring, so it doesn't hide the foot.</li>
+      <li><b>Clothing and light.</b> Fitted clothing that stands out from the background; light from the camera's side, not a bright window behind the bike.</li>
+      <li><b>Sound.</b> Volume up and, on iPhone, the silent switch off. Everything the rider needs to know while pedalling is spoken.</li>
     </ul>
-    <h2>Recording</h2>
-    <p>Tap <b>Start</b>, walk to the bike, and start pedalling at a steady, moderate effort you could hold for an hour (about 80–95 rpm). By default the app waits until your cadence is steady, counts ${Settings.v.startStrokes} strokes, and records for ${Settings.v.stopSeconds} seconds. You can change both in Settings. If something goes wrong, for example your knee was out of view, it tells you and tries again by itself.</p>
-    <details class="more"><summary>${icon('chevR')}What the beeps mean</summary><dl class="kv" style="margin-top:8px">${BEEP_LEGEND.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl></details>
-    <h2>The six taps</h2>
-    <p>Pose tracking finds your joints but cannot see the bike. After recording, the app shows a still frame with the crank level and asks you to tap: the rear axle, the top of the rear tyre, the back edge of the rear tyre, the front axle, the bottom bracket, and the pedal spindle. Hold your finger down to see a magnifier, slide to the exact point, and let go. From the crank length and wheel size you entered, these taps give the app its scale in millimetres, the bike's level, and the pedal position through the stroke. The two scales (wheel and crank) are checked against each other: if they disagree, the camera was not square to the bike.</p>
+    <h2>Placing the camera</h2>
+    <p>Turn the phone sideways and stand it 2.5–3 m from the bike, pointing straight at its side, with the lens about level with the top of the wheels. The camera fills the screen with an outline of a bike and rider: move the phone until the real wheels sit inside the outline's wheels. Nobody needs to be on the bike. Three checks along the top turn green: <b>Level</b> (from the phone's motion sensor; on a laptop, check by eye), <b>Landscape</b>, and <b>Light</b>. If someone is already on the bike, a fourth appears, <b>Rider in frame</b>, and turns amber if their head or feet are cut off. <b>Flip</b> mirrors the outline for a bike facing the other way.</p>
+    <h2>Marking the bike</h2>
+    <p>Tap <b>Mark the bike</b>. The picture freezes; mark eight points in turn: the rear axle, the top of the rear tyre, the back of the rear tyre, the front axle, the bottom bracket, the pedal spindle, the saddle nose and the top of the hood. Hold your finger down to see a magnifier, slide to the exact point and let go. Before the pedal spindle, set the near crank level and pointing forward (or ask your rider to, and hold still), then tap <b>Refresh frame</b>. Every point can be seen whether or not someone is on the bike.</p>
+    <p>From your crank length and wheel size, the marks give the app its scale, check that the camera is square and level and at a good distance, and measure the bike itself: saddle height to the nose, setback, drop to the hoods and reach. On a retest those numbers show exactly what changed. If the camera hasn't moved since a recent session, the app shows the earlier marks as teal rings; if they sit on the axles, tyre and bottom bracket, tap <b>They line up</b> and mark only the saddle nose and hood.</p>
+    <h2>Riding, and answering hands-free</h2>
+    <p>Tap <b>Ready to ride</b>. If the saddle is empty, the app says "walk to the bike and start pedalling"; if someone is already on, "start pedalling when you're ready". Pedal at a steady effort you could hold for an hour (about 80–95 rpm). By default it waits until your cadence is steady, counts ${Settings.v.startStrokes} strokes and records for ${Settings.v.stopSeconds} seconds; the two small buttons at the bottom left change that. It checks the recording before you get off.</p>
+    <p>When it asks a question (go again after a bad recording, record a second hand position, stop), answer by <b>raising your right hand above your head for yes</b> or your <b>left hand for no</b>, holding it for a moment; or say "yes" / "again" or "no" / "done" where the browser can listen; or tap the big buttons. It always says what it understood before acting. After a bad recording, doing nothing means it goes again, up to twice.</p>
+    <details class="more"><summary>${icon('chevR')}What the beeps mean</summary><dl class="kv" style="margin-top:8px">${BEEP_LEGEND.map(([a2, b2]) => `<dt>${esc(a2)}</dt><dd>${esc(b2)}</dd>`).join('')}</dl></details>
     <h2>Reading the results</h2>
     <p>Each measurement is shown against a target range for your bike, riding goal and hand position: <span class="status-good">green</span> is in range, <span class="status-warn">yellow</span> is close, <span class="status-bad">red</span> is outside. Every value also carries a confidence (three bars) based on how clearly the joints were seen and how steady the value was from stroke to stroke. Low-confidence values are greyed out and never drive a recommendation.</p>
-    <p>The app recommends <b>one change at a time</b>, in the order fitters use because changes interact: saddle height first, then saddle fore/aft. Amounts are given as a range (for example “raise the saddle 5–10 mm”). Make the change, then tap <b>retest</b>. Reach, drop, bar width and cleats arrive in the next version; their measurements are already shown.</p>
+    <p>The app recommends <b>one change at a time</b>, in the order fitters use because changes interact: saddle height first, then saddle fore/aft. Amounts are a range in 5 mm steps (for example “raise the saddle 5–10 mm”), never more than 10 mm at a time. Make the change, then tap <b>Retest</b>: the bike marks show whether the change was made and how much the measurement moved. If three rounds of changes have not brought a measurement into range, the app says to see a professional fitter. Reach, drop, bar width and cleats arrive in the next version; their measurements are already shown.</p>
     <h2>Discomfort and safety</h2>
     <p>The questions about discomfort help the app point at the measurements most often associated with where you feel it. The app never assumes discomfort is caused by your bike fit: if the related measurements are in range it says so, and lists other common causes. If you report severe discomfort, discomfort that lasts after rides, numbness, or a recent injury, it recommends seeing a clinician or professional fitter before changing anything.</p>
     <p><b>Tango Fitter is a self-fit guide, not medical advice.</b></p>
@@ -340,6 +371,8 @@ route('/help', async (main) => {
       <li><b>“Camera not allowed.”</b> Allow camera access for this site in the browser's settings (iPhone: Settings → Safari → Camera), then reload.</li>
       <li><b>No sound.</b> Volume up; iPhone silent switch off; tap Test sound in Settings.</li>
       <li><b>“I lost sight of your knee.”</b> Better light, more contrast between clothing and background, and check the whole body is in the frame.</li>
+      <li><b>“Your feet are cut off.”</b> Move the phone further back or a little higher.</li>
+      <li><b>The hand-raise isn't noticed.</b> Raise the hand clearly above your head and hold it for a second or two; or tap the button.</li>
       <li><b>Scales disagree / wheel looks oval.</b> Turn the phone so it points straight at the side of the bike, and keep it level.</li>
       <li><b>First analysis is slow.</b> The analysis engine (about 35 MB) downloads once; after that it works offline.</li>
     </ul>

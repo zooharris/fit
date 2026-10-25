@@ -178,10 +178,12 @@ async function createSampleFile() {
   s.sample = true;
   s.created = s.modified = new Date(Date.now() - 3600e3).toISOString();
   s.discomfort = { regions: { kneeFront: { level: 'mild', pattern: 'builds' } }, numbness: false, recentInjury: false };
-  const sim = TF.simulateRider({ saddleOffsetMm: -13, seconds: 14, seed: 11 });
-  const cal = TF.computeCalibration(sim.taps, r.bike, sim.height); cal.calT = sim.calT;
+  // A realistic road position (hoods about 60 mm below the saddle nose), marked on the empty bike.
+  const sim = TF.simulateRider({ saddleOffsetMm: -13, seconds: 14, seed: 11, torso: 480, backDeg: 40, handAngleDeg: -48, upperArm: 340, forearm: 300 });
+  const cal = TF.computeCalibration(sim.marks, r.bike, sim.height, sim.width); cal.markedWithRider = false;
   const clip = { id: TF.uid('c'), view: 'side', hand: 'hoods', mime: null, file: null, width: sim.width, height: sim.height, fps: 30, analysedFps: 30, durationS: sim.frames[sim.frames.length - 1].t, calibration: cal, frames: sim.frames, live: { strokes: 19, cadence: 85 }, captureSettings: {}, sample: true };
   s.clips.push(clip);
+  s.marks = JSON.parse(JSON.stringify(sim.marks)); s.bikeMeasures = cal.bikeMeasures; s.markedWithRider = false;
   const a = TF.analyseClip(clip);
   clip.calibration = a.calibration || cal;
   s.results = TF.buildResults(a, s.profile, clip.hand, s.discomfort, Settings.v.units);

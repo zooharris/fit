@@ -59,6 +59,7 @@ const DEFAULT_SETTINGS = {
   startMode: C.triggers.startMode, startSeconds: C.triggers.startSeconds, startBeeps: C.triggers.startBeeps, startStrokes: C.triggers.startStrokes,
   stopMode: C.triggers.stopMode, stopSeconds: C.triggers.stopSeconds, stopStrokes: C.triggers.stopStrokes,
   exportPrompt: C.export.promptAfterSession, cameraFacing: 'environment', cameraId: '',
+  voiceReplies: true, silhouetteFlip: false, introSeen: false,
 };
 const Settings = {
   v: Object.assign({}, DEFAULT_SETTINGS),
@@ -378,7 +379,7 @@ function renderShell(active) {
       <nav class="nav" aria-label="Main">
         <div class="brand">${logoLockupHTML(26)}</div>
         <a href="#/" data-nav="fit">${icon('fit')}<span>Fit</span></a>
-        <a href="#/history" data-nav="history" class="needs-file">${icon('history')}<span>History</span></a>
+        <a href="#/sessions" data-nav="sessions" class="needs-file">${icon('history')}<span>Sessions</span></a>
         <a href="#/settings" data-nav="settings">${icon('settings')}<span>Settings</span></a>
         <a href="#/help" data-nav="help">${icon('help')}<span>Help</span></a>
         <div class="nav-sep"></div>

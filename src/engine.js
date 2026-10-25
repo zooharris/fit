@@ -96,6 +96,10 @@ const TF_CONFIG = {
     distanceTolerance: 0.15,      // wheel size within ±15% of the silhouette's counts as "good"
     centreTolerance: 0.08,        // bike centre within 8% of frame width of the silhouette's centre
     cameraMovedPx: 15,            // axles or bottom bracket moved more than this (at 720p, scaled) → camera moved
+    lightMin: 0.22,               // mean frame brightness (0–1) below this → the Light check turns amber
+    levelToleranceDeg: 3,         // phone tilt or roll beyond this → the Level check turns amber
+    silhouetteRiderScale: 0.92,   // the brand rider is drawn a little smaller about the bottom bracket so the
+                                  // silhouette's head fits a 16:9 frame with the wheels at 20% and the ground at 84%
   },
 
   presence: {
@@ -464,6 +468,15 @@ function targetsFor(profile, hand) {
     bands[m] = { green: [g[0], g[1]], yellow: [g[0] - y, g[1] + y] };
   }
   return bands;
+}
+
+/** "below" / "above" the band, or "just below" / "just above" when the reading is within 1 unit of the edge (so a
+    rounded "140°" is never called simply "below 140–150°"). */
+function sideWords(value, band, side) {
+  const g = band && band.green ? band.green : band;
+  const edge = side === 'low' ? g[0] : g[1];
+  const just = finite(value) && Math.abs(value - edge) < 1;
+  return `${just ? 'just ' : ''}${side === 'low' ? 'below' : 'above'}`;
 }
 
 /** 'green' | 'yellow' | 'red' and which side: 'low' | 'high' | 'in'. */
@@ -1060,7 +1073,11 @@ function analyseClip(clip, opts) {
   if (cal && !footRel && cal.taps && cal.taps.spindle) {
     let mark = null;
     const withRider = cal.markedWithRider === true || (cal.markedWithRider === undefined && finite(cal.calT)); // Beta 1 taps: rider on
-    if (withRider && finite(cal.calT)) {
+    if (cal.spindleFoot && cal.spindleFoot.heel && cal.spindleFoot.toe) {
+      // 2.0: the rider was on the bike when the spindle was marked (before recording); the heel and toe seen on
+      // that still frame give the exact relation at that moment.
+      mark = { heel: cal.spindleFoot.heel, toe: cal.spindleFoot.toe, spindle: cal.taps.spindle };
+    } else if (withRider && finite(cal.calT)) {
       const f = sm[nearestFrameIndex(sm, cal.calT)];
       if (f && f.j.heel && f.j.toe) mark = { heel: f.j.heel, toe: f.j.toe, spindle: cal.taps.spindle };
     }
@@ -1421,7 +1438,7 @@ function recommend(analysis, targets, opts) {
       text: amount
         ? `${raise ? 'Raise' : 'Lower'} the saddle ${fmtRange(amount.lo, amount.hi, units)}, then retest.`
         : `${raise ? 'Raise' : 'Lower'} the saddle a little (about 5 mm), then retest. Add the calibration taps for a measured amount.`,
-      why: `Your knee extension is ${fmtAngle(m.kneeExtension.value)}, ${raise ? 'below' : 'above'} the target range of ${fmtBand('kneeExtension', targets.kneeExtension, units)}. ${raise ? 'A low saddle leaves the knee bent at the bottom of the stroke.' : 'A high saddle over-straightens the knee and can make the hips rock.'}`,
+      why: `Your knee extension is ${fmtAngle(m.kneeExtension.value)}, ${sideWords(m.kneeExtension.value, targets.kneeExtension, ke.side)} the target range of ${fmtBand('kneeExtension', targets.kneeExtension, units)}. ${raise ? 'A low saddle leaves the knee bent at the bottom of the stroke.' : 'A high saddle over-straightens the knee and can make the hips rock.'}`,
       note: [amount && amount.capped ? `The full correction may be more than this. Change it no more than ${fmtLength(R.maxSaddleChangeMm, units, 'adjust')} at a time and retest between steps.` : '', crossCheck].filter(Boolean).join(' '),
       howTo: 'Mark the seatpost with tape at the frame before loosening it, so you can measure the change and go back if you need to.',
     });
@@ -1559,7 +1576,7 @@ function withHistory(step, m, targets, history, bikeNow, units) {
     const amountText = step.amount ? fmtRange(step.amount.lo, step.amount.hi, units) : `a little (about ${fmtLength(R.saddleStepMm, units, 'adjust')})`;
     return Object.assign(out, {
       text: `One more step: ${map.imper[step.direction > 0 ? 0 : 1]} ${amountText}, then retest.`,
-      why: `Your ${label.toLowerCase()} went from ${fmtV(prevV)} to ${fmtV(nowV)} after ${changeWords(madeMm)}, and is still ${nowSide.side === 'low' ? 'below' : 'above'} the target range of ${fmtBand(metric, band, units)}.`,
+      why: `Your ${label.toLowerCase()} went from ${fmtV(prevV)} to ${fmtV(nowV)} after ${changeWords(madeMm)}, and is still ${sideWords(nowV, band, nowSide.side)} the target range of ${fmtBand(metric, band, units)}.`,
       history: Object.assign(out.history, { status: 'progress' }),
     });
   }
@@ -1828,7 +1845,7 @@ function simulateRider(p) {
   // Hands: on the bar. The bar is placed for the unmoved saddle, so moving the saddle leaves the bar where it is
   // (as on a real bike) and the arms reach for it.
   const reach = p.handReach || (p.upperArm + p.forearm) * 0.975;
-  const handDir = norm({ x: 0.92, y: -0.55 });
+  const handDir = p.handAngleDeg != null ? { x: Math.cos(p.handAngleDeg * R), y: Math.sin(p.handAngleDeg * R) } : norm({ x: 0.92, y: -0.55 });
   const baseWrist = add(shoulderFrom(scale(seatU, hipDist)), scale(handDir, reach));
   let wrist = baseWrist;
   let elbowSol = circleIntersect(shoulder, p.upperArm, wrist, p.forearm);

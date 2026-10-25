@@ -415,11 +415,110 @@ details.more summary svg { width: 14px; height: 14px; transition: transform .15s
 .compat { max-width: 560px; margin: 10vh auto; padding: 24px; }
 .kbd { font-size: 12px; border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; color: var(--ink-2); }
 
+/* ==========================================================================
+   2.0 Part B — the full-screen fit (place → mark → ride), Home, onboarding
+   The recorded frame is shown whole (contain): on a phone in landscape the
+   frame's 16:9 leaves narrow side strips where the controls sit; nothing on
+   screen hides part of what is recorded.
+   ========================================================================== */
+.fit { position: fixed; inset: 0; z-index: 50; background: #000; color: #fff; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; font-size: 15px; }
+.fit .frame { position: absolute; }
+.fit .frame video, .fit .frame canvas.still { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.fit .frame canvas.ov { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.fit .silwrap, .fit .silwrap svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.fit .bigcount { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: min(26vw, 30vh); font-weight: 800; color: rgba(255,255,255,.92); text-shadow: 0 4px 30px rgba(0,0,0,.55); pointer-events: none; }
+.fit .loupe { position: absolute; width: 132px; height: 132px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 6px 20px rgba(0,0,0,.55); overflow: hidden; pointer-events: none; z-index: 6; background: #000; }
+.fit .loupe canvas { width: 100%; height: 100%; }
+
+.fit .corner { position: absolute; z-index: 5; display: flex; gap: 8px; }
+.fit .corner.tl { top: calc(env(safe-area-inset-top, 0px) + 10px); left: calc(env(safe-area-inset-left, 0px) + 10px); flex-direction: column; align-items: flex-start; max-width: min(46vw, 360px); }
+.fit .corner.tr { top: calc(env(safe-area-inset-top, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 10px); flex-wrap: wrap; justify-content: flex-end; max-width: 40vw; }
+.fit .corner.bl { bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); left: calc(env(safe-area-inset-left, 0px) + 10px); flex-direction: column; align-items: flex-start; }
+.fit .corner.br { bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); right: calc(env(safe-area-inset-right, 0px) + 10px); flex-wrap: wrap; justify-content: flex-end; align-items: center; max-width: 60vw; }
+.fit .pill { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 8px 13px; border-radius: 999px; background: rgba(10, 18, 32, .72); border: 1px solid rgba(255,255,255,.16); color: #fff; font-size: 14px; font-weight: 600; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.fit .btn-pill { cursor: pointer; }
+.fit .btn-pill svg { width: 18px; height: 18px; }
+.fit .pill.rec { background: rgba(240, 80, 110, .92); border-color: transparent; }
+.fit .pill.rec .dot { animation: blink 1s infinite; }
+.fit .lights { display: flex; flex-wrap: wrap; gap: 6px; }
+.fit .light { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 5px 11px; border-radius: 999px; background: rgba(10, 18, 32, .72); border: 1px solid rgba(255,255,255,.14); font-size: 14px; font-weight: 600; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.fit .light i { width: 10px; height: 10px; border-radius: 50%; background: #8A96A8; flex: 0 0 auto; }
+.fit .light.ok i { background: #34C77B; box-shadow: 0 0 0 3px rgba(52,199,123,.25); }
+.fit .light.warn i { background: #F2C94C; box-shadow: 0 0 0 3px rgba(242,201,76,.25); }
+.fit .light.warn { color: #FBE6A6; }
+
+.fit .status { position: absolute; z-index: 4; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); max-width: min(56vw, 560px); text-align: center; display: flex; flex-direction: column; gap: 2px; padding: 9px 16px; border-radius: 16px; background: rgba(10, 18, 32, .78); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); pointer-events: none; }
+.fit .status #fx-big { font-size: 18px; font-weight: 700; }
+.fit .status #fx-small { font-size: 14px; color: #C9D3E2; }
+.fit .status[hidden] { display: none; }
+.fit .btn { --bg-3: rgba(24, 35, 56, .88); --line-2: rgba(255,255,255,.22); --ink: #fff; color: #fff; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.fit .btn.primary { color: #1A0B02; background: #FF6A1A; border-color: #FF6A1A; }
+.fit .btn.quiet { color: #DCE3EE; background: rgba(10,18,32,.5); }
+
+.fit .corner { pointer-events: none; }
+.fit .corner button, .fit .corner .btn, .fit .corner a { pointer-events: auto; }
+.fit .lights[hidden] { display: none; }
+.fit .markpill { position: absolute; z-index: 5; top: calc(env(safe-area-inset-top, 0px) + 60px); left: calc(env(safe-area-inset-left, 0px) + 10px); max-width: min(42vw, 360px); pointer-events: none;
+  display: grid; grid-template-columns: 86px 1fr; gap: 10px; align-items: center; padding: 8px 12px 8px 8px; border-radius: 14px; background: rgba(10, 18, 32, .82); border: 1px solid rgba(255,255,255,.16); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); --ink: #E9EEF6; --bg-2: #111A2B; --line-2: #2B3D5B; --logo-bike: #6F7F98; --accent: #FF6A1A; }
+.fit .markpill.right { left: auto; right: calc(env(safe-area-inset-right, 0px) + 10px); top: calc(env(safe-area-inset-top, 0px) + 60px); }
+.fit .markpill[hidden] { display: none; }
+.fit .markpill svg { width: 86px; height: 86px; border-radius: 10px; background: rgba(255,255,255,.06); }
+.fit .markpill b { display: block; font-size: 15px; }
+.fit .markpill span { display: block; font-size: 14px; color: #C9D3E2; line-height: 1.35; }
+
+.fit .result-card { position: absolute; z-index: 5; right: calc(env(safe-area-inset-right, 0px) + 10px); top: calc(env(safe-area-inset-top, 0px) + 60px); width: min(420px, 46vw); max-height: calc(100% - 140px); overflow: auto; padding: 14px 16px; border-radius: 16px; background: rgba(10, 18, 32, .9); border: 1px solid rgba(255,255,255,.16); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.fit .result-card h3 { font-size: 17px; margin-bottom: 8px; }
+.fit .rrow { display: grid; grid-template-columns: 12px 74px 1fr; gap: 8px; align-items: center; font-size: 14px; padding: 3px 0; }
+.fit .rrow i { width: 10px; height: 10px; border-radius: 50%; background: #34C77B; }
+.fit .rrow.warn i { background: #F2C94C; }
+.fit .rrow span { color: #C9D3E2; }
+.fit .bike-nums { margin-top: 8px; font-size: 14px; color: #E9EEF6; line-height: 1.45; }
+.fit .fixes { margin-top: 8px; padding-left: 18px; font-size: 14px; color: #FBE6A6; display: flex; flex-direction: column; gap: 4px; }
+
+.fit .question { position: absolute; z-index: 7; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 70px); width: min(560px, 92vw); padding: 16px; border-radius: 18px; background: rgba(10, 18, 32, .92); border: 1px solid rgba(255,255,255,.18); text-align: center; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.fit .question p { font-size: 17px; font-weight: 600; }
+.fit .question .qrow { display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+.fit .question .qrow .btn { min-width: 160px; }
+.fit .question .qhint { font-size: 14px; color: #C9D3E2; font-weight: 500; margin-top: 10px; }
+.fit .nudge { position: absolute; z-index: 4; left: 50%; top: 50%; transform: translate(-50%, calc(-50% - 34vh)); display: inline-flex; gap: 8px; align-items: center; padding: 8px 14px; border-radius: 999px; background: rgba(255,106,26,.92); color: #1A0B02; font-weight: 700; font-size: 14px; white-space: nowrap; }
+.fit .nudge svg { width: 18px; height: 18px; }
+.fit .fadeable, .fit .status { transition: opacity .3s; }
+.fit.faded .fadeable { opacity: 0; pointer-events: none; }
+@media (orientation: portrait) {
+  .fit .status { bottom: auto; top: calc(50% + 30vw + 16px); max-width: 92vw; }
+  .fit .corner.br { max-width: 92vw; }
+  .fit .result-card { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); width: calc(100vw - 20px); max-height: 46vh; }
+  .fit .corner.tl { max-width: 70vw; }
+}
+@media (max-height: 430px) {
+  .fit .markpill { grid-template-columns: 52px 1fr; padding: 6px 10px 6px 6px; max-width: 34vw; }
+  .fit .markpill svg { width: 52px; height: 52px; }
+  .fit .markpill span { display: none; }
+  .fit .pill { min-height: 36px; padding: 6px 11px; }
+}
+
+/* Home */
+.rider-card { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.rider-card .title { font-weight: 700; font-size: 18px; }
+.rider-card .sub { font-size: 13px; color: var(--ink-2); }
+.rider-card .grow { flex: 1; min-width: 0; }
+.main > .banner { margin-bottom: 14px; }
+.main > .reco { margin-bottom: 14px; }
+.start-fit { margin: 4px 0 12px; }
+
+/* Onboarding */
+.intro { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; padding-top: 8px; }
+.intro-art { border-radius: var(--radius); border: 1px solid var(--line); background: var(--bg-2); padding: 10px; }
+.intro-art svg { display: block; width: 100%; height: auto; max-height: 300px; }
+.intro-icon { display: flex; justify-content: center; padding: 30px; }
+.intro-icon svg { width: 120px; height: 120px; max-height: none; border-radius: 26px; }
+.intro h1 { margin-top: 6px; }
+
 </style>
 </head>
 <body>
 <noscript><div style="padding:24px;font-family:system-ui">Tango Fitter needs JavaScript turned on.</div></noscript>
-<!-- Tango Fitter 0.1.0-beta.1 · built 2026-10-25 16:40 UTC · one self-contained file -->
+<!-- Tango Fitter 0.1.0-beta.1 · built 2026-10-25 17:05 UTC · one self-contained file -->
 <script>
 /* ==========================================================================
    Tango Fitter — measurement engine
@@ -519,6 +618,10 @@ const TF_CONFIG = {
     distanceTolerance: 0.15,      // wheel size within ±15% of the silhouette's counts as "good"
     centreTolerance: 0.08,        // bike centre within 8% of frame width of the silhouette's centre
     cameraMovedPx: 15,            // axles or bottom bracket moved more than this (at 720p, scaled) → camera moved
+    lightMin: 0.22,               // mean frame brightness (0–1) below this → the Light check turns amber
+    levelToleranceDeg: 3,         // phone tilt or roll beyond this → the Level check turns amber
+    silhouetteRiderScale: 0.92,   // the brand rider is drawn a little smaller about the bottom bracket so the
+                                  // silhouette's head fits a 16:9 frame with the wheels at 20% and the ground at 84%
   },
 
   presence: {
@@ -887,6 +990,15 @@ function targetsFor(profile, hand) {
     bands[m] = { green: [g[0], g[1]], yellow: [g[0] - y, g[1] + y] };
   }
   return bands;
+}
+
+/** "below" / "above" the band, or "just below" / "just above" when the reading is within 1 unit of the edge (so a
+    rounded "140°" is never called simply "below 140–150°"). */
+function sideWords(value, band, side) {
+  const g = band && band.green ? band.green : band;
+  const edge = side === 'low' ? g[0] : g[1];
+  const just = finite(value) && Math.abs(value - edge) < 1;
+  return `${just ? 'just ' : ''}${side === 'low' ? 'below' : 'above'}`;
 }
 
 /** 'green' | 'yellow' | 'red' and which side: 'low' | 'high' | 'in'. */
@@ -1483,7 +1595,11 @@ function analyseClip(clip, opts) {
   if (cal && !footRel && cal.taps && cal.taps.spindle) {
     let mark = null;
     const withRider = cal.markedWithRider === true || (cal.markedWithRider === undefined && finite(cal.calT)); // Beta 1 taps: rider on
-    if (withRider && finite(cal.calT)) {
+    if (cal.spindleFoot && cal.spindleFoot.heel && cal.spindleFoot.toe) {
+      // 2.0: the rider was on the bike when the spindle was marked (before recording); the heel and toe seen on
+      // that still frame give the exact relation at that moment.
+      mark = { heel: cal.spindleFoot.heel, toe: cal.spindleFoot.toe, spindle: cal.taps.spindle };
+    } else if (withRider && finite(cal.calT)) {
       const f = sm[nearestFrameIndex(sm, cal.calT)];
       if (f && f.j.heel && f.j.toe) mark = { heel: f.j.heel, toe: f.j.toe, spindle: cal.taps.spindle };
     }
@@ -1844,7 +1960,7 @@ function recommend(analysis, targets, opts) {
       text: amount
         ? `${raise ? 'Raise' : 'Lower'} the saddle ${fmtRange(amount.lo, amount.hi, units)}, then retest.`
         : `${raise ? 'Raise' : 'Lower'} the saddle a little (about 5 mm), then retest. Add the calibration taps for a measured amount.`,
-      why: `Your knee extension is ${fmtAngle(m.kneeExtension.value)}, ${raise ? 'below' : 'above'} the target range of ${fmtBand('kneeExtension', targets.kneeExtension, units)}. ${raise ? 'A low saddle leaves the knee bent at the bottom of the stroke.' : 'A high saddle over-straightens the knee and can make the hips rock.'}`,
+      why: `Your knee extension is ${fmtAngle(m.kneeExtension.value)}, ${sideWords(m.kneeExtension.value, targets.kneeExtension, ke.side)} the target range of ${fmtBand('kneeExtension', targets.kneeExtension, units)}. ${raise ? 'A low saddle leaves the knee bent at the bottom of the stroke.' : 'A high saddle over-straightens the knee and can make the hips rock.'}`,
       note: [amount && amount.capped ? `The full correction may be more than this. Change it no more than ${fmtLength(R.maxSaddleChangeMm, units, 'adjust')} at a time and retest between steps.` : '', crossCheck].filter(Boolean).join(' '),
       howTo: 'Mark the seatpost with tape at the frame before loosening it, so you can measure the change and go back if you need to.',
     });
@@ -1982,7 +2098,7 @@ function withHistory(step, m, targets, history, bikeNow, units) {
     const amountText = step.amount ? fmtRange(step.amount.lo, step.amount.hi, units) : `a little (about ${fmtLength(R.saddleStepMm, units, 'adjust')})`;
     return Object.assign(out, {
       text: `One more step: ${map.imper[step.direction > 0 ? 0 : 1]} ${amountText}, then retest.`,
-      why: `Your ${label.toLowerCase()} went from ${fmtV(prevV)} to ${fmtV(nowV)} after ${changeWords(madeMm)}, and is still ${nowSide.side === 'low' ? 'below' : 'above'} the target range of ${fmtBand(metric, band, units)}.`,
+      why: `Your ${label.toLowerCase()} went from ${fmtV(prevV)} to ${fmtV(nowV)} after ${changeWords(madeMm)}, and is still ${sideWords(nowV, band, nowSide.side)} the target range of ${fmtBand(metric, band, units)}.`,
       history: Object.assign(out.history, { status: 'progress' }),
     });
   }
@@ -2251,7 +2367,7 @@ function simulateRider(p) {
   // Hands: on the bar. The bar is placed for the unmoved saddle, so moving the saddle leaves the bar where it is
   // (as on a real bike) and the arms reach for it.
   const reach = p.handReach || (p.upperArm + p.forearm) * 0.975;
-  const handDir = norm({ x: 0.92, y: -0.55 });
+  const handDir = p.handAngleDeg != null ? { x: Math.cos(p.handAngleDeg * R), y: Math.sin(p.handAngleDeg * R) } : norm({ x: 0.92, y: -0.55 });
   const baseWrist = add(shoulderFrom(scale(seatU, hipDist)), scale(handDir, reach));
   let wrist = baseWrist;
   let elbowSol = circleIntersect(shoulder, p.upperArm, wrist, p.forearm);
@@ -2366,7 +2482,9 @@ const BRAND = {
     hip: { x: 475.3, y: 254.2 }, knee: { x: 629.2, y: 324.6 }, ankle: { x: 574.7, y: 477.1 }, heel: { x: 556, y: 494 }, toe: { x: 641, y: 511 },
   },
   bike: { rear: { x: 412.4, y: 514.8 }, front: { x: 772.4, y: 514.8 }, r: 122, bb: { x: 560, y: 540 }, spindle: { x: 612, y: 505 },
-    seat: { x: 468, y: 302 }, saddle: { x: 478, y: 286 }, headTop: { x: 746, y: 262 }, headBot: { x: 762, y: 322 } },
+    seat: { x: 468, y: 302 }, saddle: { x: 478, y: 286 }, headTop: { x: 746, y: 262 }, headBot: { x: 762, y: 322 },
+    // 2.0 marks: the saddle's front tip and the top of the hood where the hand rests.
+    saddleNose: { x: 514, y: 288 }, barTop: { x: 812, y: 232 } },
 };
 
 /** Pictogram rider: even, rounded strokes, head set apart from the body. */
@@ -2510,6 +2628,7 @@ const DEFAULT_SETTINGS = {
   startMode: C.triggers.startMode, startSeconds: C.triggers.startSeconds, startBeeps: C.triggers.startBeeps, startStrokes: C.triggers.startStrokes,
   stopMode: C.triggers.stopMode, stopSeconds: C.triggers.stopSeconds, stopStrokes: C.triggers.stopStrokes,
   exportPrompt: C.export.promptAfterSession, cameraFacing: 'environment', cameraId: '',
+  voiceReplies: true, silhouetteFlip: false, introSeen: false,
 };
 const Settings = {
   v: Object.assign({}, DEFAULT_SETTINGS),
@@ -2829,7 +2948,7 @@ function renderShell(active) {
       <nav class="nav" aria-label="Main">
         <div class="brand">${logoLockupHTML(26)}</div>
         <a href="#/" data-nav="fit">${icon('fit')}<span>Fit</span></a>
-        <a href="#/history" data-nav="history" class="needs-file">${icon('history')}<span>History</span></a>
+        <a href="#/sessions" data-nav="sessions" class="needs-file">${icon('history')}<span>Sessions</span></a>
         <a href="#/settings" data-nav="settings">${icon('settings')}<span>Settings</span></a>
         <a href="#/help" data-nav="help">${icon('help')}<span>Help</span></a>
         <div class="nav-sep"></div>
@@ -3060,10 +3179,12 @@ async function createSampleFile() {
   s.sample = true;
   s.created = s.modified = new Date(Date.now() - 3600e3).toISOString();
   s.discomfort = { regions: { kneeFront: { level: 'mild', pattern: 'builds' } }, numbness: false, recentInjury: false };
-  const sim = TF.simulateRider({ saddleOffsetMm: -13, seconds: 14, seed: 11 });
-  const cal = TF.computeCalibration(sim.taps, r.bike, sim.height); cal.calT = sim.calT;
+  // A realistic road position (hoods about 60 mm below the saddle nose), marked on the empty bike.
+  const sim = TF.simulateRider({ saddleOffsetMm: -13, seconds: 14, seed: 11, torso: 480, backDeg: 40, handAngleDeg: -48, upperArm: 340, forearm: 300 });
+  const cal = TF.computeCalibration(sim.marks, r.bike, sim.height, sim.width); cal.markedWithRider = false;
   const clip = { id: TF.uid('c'), view: 'side', hand: 'hoods', mime: null, file: null, width: sim.width, height: sim.height, fps: 30, analysedFps: 30, durationS: sim.frames[sim.frames.length - 1].t, calibration: cal, frames: sim.frames, live: { strokes: 19, cadence: 85 }, captureSettings: {}, sample: true };
   s.clips.push(clip);
+  s.marks = JSON.parse(JSON.stringify(sim.marks)); s.bikeMeasures = cal.bikeMeasures; s.markedWithRider = false;
   const a = TF.analyseClip(clip);
   clip.calibration = a.calibration || cal;
   s.results = TF.buildResults(a, s.profile, clip.hand, s.discomfort, Settings.v.units);
@@ -3084,8 +3205,9 @@ async function createSampleFile() {
 const ART = (() => {
   const b = BRAND.bike, j = BRAND.j;
   const pts = {
-    rearAxle: b.rear, frontAxle: b.front, bb: b.bb, spindle: b.spindle,
+    rearAxle: b.rear, frontAxle: b.front, bb: b.bb, spindle: { x: b.bb.x + 56, y: b.bb.y },
     tyreTop: { x: b.rear.x, y: b.rear.y - b.r - 6 }, tyreBack: { x: b.rear.x - b.r - 6, y: b.rear.y },
+    saddleNose: b.saddleNose, barTop: b.barTop,
   };
   return { b, j, pts, groundY: b.rear.y + b.r + 8 };
 })();
@@ -3153,17 +3275,56 @@ const SETUP_ART = {
   clothes() { return riderSVG({ angles: true, label: 'Fitted clothing so every joint is clearly visible' }); },
 };
 
-/** The guide drawn over the live camera: where the bike should sit in the frame. */
-function framingGuideSVG() {
-  return `<svg class="guide" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <g fill="none" stroke="rgba(255,255,255,.32)" stroke-width="4" stroke-dasharray="14 12">
-      <circle cx="578" cy="681" r="151"/><circle cx="1023" cy="681" r="151"/>
-      <line x1="300" y1="832" x2="1300" y2="832"/>
-      <line x1="230" y1="712" x2="1370" y2="712" stroke="rgba(255,106,26,.5)"/>
+/**
+ * silhouetteSVG(W, H, flip) — the placement guide, in the video's own pixel coordinates (so it sits exactly on
+ * the recorded frame): the brand bike with each wheel 20% of the frame width, the ground at 84% of the height,
+ * centred, and the brand rider on it (drawn a little smaller about the bottom bracket so the head fits 16:9).
+ * Dashed 35% white for the bike, brighter wheels (what the user lines up), a faint rider. flip mirrors it for a
+ * bike facing left.
+ */
+function silhouetteGeometry(W, H, flip) {
+  const b = BRAND.bike, S = TF.CONFIG.camera.silhouette;
+  const k = (S.wheelFrac * W) / (2 * b.r);
+  const ty = S.groundFrac * H - (b.rear.y + b.r) * k;
+  const cx = (b.rear.x + b.front.x) / 2;
+  const tx = S.centreXFrac * W - cx * k;
+  // Map a brand point to video pixels.
+  const map = (p) => { let x = tx + p.x * k; if (flip) x = W - x; return { x, y: ty + p.y * k }; };
+  return { k, tx, ty, map, transform: flip ? `translate(${W} 0) scale(-1 1) translate(${tx} ${ty}) scale(${k})` : `translate(${tx} ${ty}) scale(${k})` };
+}
+function silhouetteSVG(W, H, flip, ghosts) {
+  const g = silhouetteGeometry(W, H, flip), b = BRAND.bike, j = BRAND.j, rs = TF.CONFIG.camera.silhouetteRiderScale;
+  const L = (a, c) => `<line x1="${a.x}" y1="${a.y}" x2="${c.x}" y2="${c.y}"/>`;
+  const sw = 2.5 / g.k; // ~2.5 px on the video whatever the scale
+  const riderT = `translate(${b.bb.x} ${b.bb.y}) scale(${rs}) translate(${-b.bb.x} ${-b.bb.y})`;
+  const pl = (pts) => pts.map((p) => `${p.x},${p.y}`).join(' ');
+  let ghostHTML = '';
+  if (ghosts) {
+    for (const [key, p] of Object.entries(ghosts)) {
+      ghostHTML += `<circle cx="${p.x}" cy="${p.y}" r="${Math.max(10, W / 90)}" fill="none" stroke="#20D6B5" stroke-width="${Math.max(3, W / 400)}"/><circle cx="${p.x}" cy="${p.y}" r="${Math.max(3, W / 400)}" fill="#20D6B5"/>`;
+      void key;
+    }
+  }
+  return `<svg class="sil" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <g transform="${g.transform}">
+      <g fill="none" stroke="rgba(255,255,255,.35)" stroke-width="${sw * 1.6}" stroke-dasharray="${14 / g.k * 0.6} ${10 / g.k * 0.6}" stroke-linecap="round">
+        ${L(b.rear, b.bb)}${L(b.rear, b.seat)}${L(b.bb, b.seat)}${L(b.seat, b.headTop)}${L(b.bb, b.headBot)}${L(b.headTop, b.headBot)}${L(b.headBot, b.front)}${L(b.seat, b.saddle)}${L(b.headTop, b.barTop)}
+        <line x1="${b.saddle.x - 42}" y1="${b.saddle.y}" x2="${b.saddleNose.x}" y2="${b.saddleNose.y}"/>
+      </g>
+      <g fill="none" stroke="rgba(255,255,255,.75)" stroke-width="${sw * 2}" stroke-dasharray="${22 / g.k * 0.6} ${9 / g.k * 0.6}">
+        <circle cx="${b.rear.x}" cy="${b.rear.y}" r="${b.r}"/><circle cx="${b.front.x}" cy="${b.front.y}" r="${b.r}"/>
+      </g>
+      <g fill="rgba(255,255,255,.6)"><circle cx="${b.rear.x}" cy="${b.rear.y}" r="${6 / g.k * 0.6}"/><circle cx="${b.front.x}" cy="${b.front.y}" r="${6 / g.k * 0.6}"/><circle cx="${b.bb.x}" cy="${b.bb.y}" r="${7 / g.k * 0.6}"/></g>
+      <line x1="${b.rear.x - b.r - 40}" y1="${b.rear.y + b.r}" x2="${b.front.x + b.r + 40}" y2="${b.front.y + b.r}" stroke="rgba(255,255,255,.35)" stroke-width="${sw}"/>
+      <g transform="${riderT}" fill="none" stroke="rgba(255,255,255,.16)" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="${j.hip.x}" y1="${j.hip.y}" x2="${j.shoulder.x}" y2="${j.shoulder.y}" stroke-width="70"/>
+        <polyline points="${pl([j.hip, j.knee, j.ankle])}" stroke-width="54"/>
+        <polyline points="${pl([j.heel, j.toe])}" stroke-width="28"/>
+        <polyline points="${pl([j.shoulder, j.elbow, j.wrist])}" stroke-width="34"/>
+        <circle cx="${j.head.x}" cy="${j.head.y}" r="38" fill="rgba(255,255,255,.16)" stroke="none"/>
+      </g>
     </g>
-    <circle cx="760" cy="712" r="12" fill="none" stroke="rgba(255,138,76,.9)" stroke-width="4"/>
-    <text x="1370" y="700" text-anchor="end" fill="rgba(255,138,76,.95)" style="font:600 24px system-ui">bottom bracket about here</text>
-    <text x="800" y="60" text-anchor="middle" fill="rgba(255,255,255,.55)" style="font:600 24px system-ui">whole rider and both wheels in the frame</text>
+    ${ghostHTML}
   </svg>`;
 }
 
@@ -3218,43 +3379,61 @@ function renderWelcome(main) {
 
 /* ---------- home ---------- */
 route('/', async (main) => {
+  if (!Settings.v.introSeen) { go('#/intro'); return; }
   if (!S.file) { renderWelcome(main); return; }
   const r = rider();
   if (!r) { go('#/rider/new'); return; }
   const sessions = r.sessions.slice().sort((a, b) => (a.created < b.created ? 1 : -1));
   const last = sessions[0];
-  let lastCard = '';
+  let changeCard = '';
   if (last) {
     const res = sessionResults(r, last);
     const rec = res && res.recommendation && res.recommendation.current;
-    lastCard = `
-      <div class="panel ${rec ? 'accent' : ''} reco">
-        <div class="eyebrow"><span class="caption">Latest fit · ${esc(fmtDate(last.created))}</span>${last.sample ? '<span class="tag teal">Sample</span>' : ''}</div>
-        ${rec ? `<div class="action">${esc(rec.text)}</div><p class="why">${esc(rec.why)}</p>` : res ? `<div class="action" style="color:var(--good)">Saddle position is in range</div><p class="why">${res.recommendation && res.recommendation.later.length ? 'Reach, drop and the other checks come in the next version; see the results for the measurements.' : 'Your measurements are within the target ranges for your bike and riding style.'}</p>` : '<p class="why">This session has no results yet.</p>'}
-        <div class="btn-row">
-          ${rec ? `<a class="btn primary" href="#/session/new?retest=${last.id}">${icon('refresh')}I've made the change — retest</a>` : `<a class="btn primary" href="#/session/new">${icon('camera')}New fit session</a>`}
-          <a class="btn" href="#/session/${last.id}">See results</a>
-        </div>
+    const stillToDo = rec && rec.history && rec.history.status === 'notMade';
+    changeCard = `
+      <div class="panel ${rec && !stillToDo ? 'accent' : ''} reco">
+        <div class="eyebrow"><span class="caption">${rec ? (stillToDo ? 'Still to do' : rec.kind === 'stop' ? 'Time for a professional' : 'Your next change') : 'Latest fit'} · ${esc(fmtDate(last.created))}</span>${last.sample ? '<span class="tag teal">Sample</span>' : ''}</div>
+        ${rec ? `<div class="action">${esc(rec.text)}</div><p class="why">${esc(rec.why)}</p>` : res ? `<div class="action" style="color:var(--good)">Saddle position is in range</div><p class="why">Nothing to change on the saddle.</p>` : '<p class="why">This session has no results yet.</p>'}
+        <div class="btn-row">${rec && rec.kind !== 'stop' && !last.sample ? `<a class="btn" href="#/session/new?retest=${last.id}">${icon('refresh')}Retest</a>` : ''}<a class="btn" href="#/session/${last.id}">Results</a></div>
       </div>`;
   }
   main.innerHTML = `
     ${compatBanners()}
-    <div class="page-head"><div><h1>${esc(r.name)}</h1><div class="sub">${esc(bikeSummary(r))}</div></div>
-      <div class="btn-row"><a class="btn sm" href="#/rider/${r.id}">${icon('edit')}Edit profile</a></div></div>
-    ${unexported() ? `<div class="banner warn" style="margin-bottom:14px">${icon('alert')}<div class="grow"><b>Not exported yet.</b> Changes since the last export are only on this device; the browser can clear its storage. Export to keep a permanent copy.</div><button class="btn sm" id="h-export">${icon('download')}Export</button></div>` : ''}
-    ${CAPS.ios && !CAPS.standalone && !S.meta.hideInstallTip ? `<div class="banner info" style="margin-bottom:14px">${icon('info')}<div class="grow">Tip: tap <b>Share → Add to Home Screen</b>. Tango Fitter then opens full screen, and iOS keeps its storage instead of clearing it after a week without use.</div><button class="btn sm quiet" id="h-tip">Dismiss</button></div>` : ''}
-    ${last ? lastCard : `
-      <div class="panel accent">
-        <div class="caption">Your first fit</div>
-        <h2 style="margin:6px 0 8px">Ready when you are</h2>
-        <p class="muted">You'll answer a few questions, set the phone up beside your bike, pedal for about a minute while the app guides you by voice, then tap six points on the bike so the app can measure in ${Settings.v.units === 'imperial' ? 'inches' : 'millimetres'}.</p>
-        <div class="btn-row" style="margin-top:14px"><a class="btn primary lg" href="#/session/new">${icon('camera')}Start a fit session</a><a class="btn quiet" href="#/help">How it works</a></div>
-      </div>`}
-    ${sessions.length ? `<div class="section"><div class="section-head"><h2>Recent sessions</h2><a class="btn sm quiet" href="#/history">All history ${icon('chevR')}</a></div>
-      <div class="list">${sessions.slice(0, 4).map((s) => sessionRow(r, s)).join('')}</div></div>` : ''}
-    ${last ? `<div class="section"><a class="btn" href="#/session/new">${icon('camera')}New fit session</a></div>` : ''}`;
+    <div class="panel rider-card">
+      <span class="avatar">${esc(initials(r.name))}</span>
+      <div class="grow"><div class="title">${esc(r.name)}</div><div class="sub">${esc(bikeSummary(r))}</div></div>
+      <a class="btn sm" href="#/rider/${r.id}">${icon('edit')}Edit</a>
+    </div>
+    ${unexported() ? `<div class="banner warn">${icon('alert')}<div class="grow"><b>Not exported yet.</b> The browser can clear its storage; export to keep a permanent copy.</div><button class="btn sm" id="h-export">${icon('download')}Export</button></div>` : ''}
+    ${changeCard}
+    <a class="btn primary lg block start-fit" href="#/session/new">${icon('camera')}Start a fit</a>
+    ${!last ? `<p class="small muted">Set the phone beside your bike, mark eight points on the bike, then pedal for about a minute while the app guides you by voice. Fitting yourself or helping a friend, it works the same way.</p>` : ''}
+    ${sessions.length ? `<div class="section"><div class="section-head"><h2>Recent sessions</h2><a class="btn sm quiet" href="#/sessions">All sessions ${icon('chevR')}</a></div>
+      <div class="list">${sessions.slice(0, 3).map((x) => sessionRow(r, x)).join('')}</div></div>` : ''}`;
   const ex = $('#h-export', main); if (ex) ex.onclick = () => exportFlow();
-  const tip = $('#h-tip', main); if (tip) tip.onclick = async () => { S.meta.hideInstallTip = true; await saveMeta(); render(); };
+}, { nav: 'fit' });
+
+/* ---------- onboarding: three screens, first run and from Help ---------- */
+route('/intro', async (main, { query }) => {
+  const i = Math.max(0, Math.min(2, Number(query.get('i') || 0)));
+  const screens = [
+    { art: SETUP_ART.rig(), title: 'What you need', text: ['A trainer or rollers, a phone stand or shelf, and 2.5 to 3 metres of room beside the bike.', 'Sound on. Fit yourself, or help a friend: it works both ways.'] },
+    { art: riderSVG({ angles: true, label: 'Rider on a bike with angles measured' }), title: 'How a fit goes', text: ['Place the phone so the bike sits in the outline, then mark eight points on the bike.', 'Ride for about a minute while the app talks you through it. You get one change to make, then a retest to check it.'] },
+    { art: `<div class="intro-icon">${logoIconSVG(120)}</div>`, title: CAPS.ios ? 'Add it to your Home Screen' : 'Your fits stay with you', text: CAPS.ios ? ['In Safari, tap Share, then Add to Home Screen. Tango Fitter opens full screen and iOS keeps its storage.', 'Your fits stay on this device; export the fit file to keep a permanent copy.'] : ['Everything stays on this device. Nothing is uploaded.', 'Export the fit file to keep a permanent copy, and open it on any phone, tablet or computer.'] },
+  ];
+  const sc = screens[i];
+  const done = async () => { Settings.set('introSeen', true); go(query.get('from') === 'help' ? '#/help' : '#/'); };
+  main.innerHTML = `<div class="intro">
+    <div class="progress-dots">${screens.map((_, k) => `<i class="${k <= i ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="intro-art">${sc.art}</div>
+    <h1>${esc(sc.title)}</h1>
+    ${sc.text.map((t) => `<p class="muted">${esc(t)}</p>`).join('')}
+    <div class="btn-row">${i < 2 ? `<button class="btn primary lg" id="in-next">Next ${icon('chevR')}</button><button class="btn quiet" id="in-skip">Skip</button>` : `<button class="btn primary lg" id="in-done">Get started</button>`}</div>
+  </div>`;
+  const from = query.get('from') ? `&from=${query.get('from')}` : '';
+  const nx = $('#in-next', main); if (nx) nx.onclick = () => go(`#/intro?i=${i + 1}${from}`);
+  const sk = $('#in-skip', main); if (sk) sk.onclick = done;
+  const dn = $('#in-done', main); if (dn) dn.onclick = done;
 }, { nav: 'fit' });
 
 function sessionRow(r, s, showRider) {
@@ -3279,10 +3458,18 @@ function sessionAnalysis(s) {
   S.cache.set(s.id, a);
   return a;
 }
+/** The rider's earlier sessions, oldest first, for the same hand position: what each recommended and measured. */
+function historyFor(r, s) {
+  const hand = (s.clips[0] || {}).hand;
+  return r.sessions
+    .filter((x) => x.id !== s.id && !x.sample && x.created < (s.created || '9') && x.results && (x.clips[0] || {}).hand === hand)
+    .sort((a, b) => (a.created < b.created ? -1 : 1))
+    .map((x) => TF.historyEntry(x.results, x.bikeMeasures, x.created));
+}
 function sessionResults(r, s) {
   const a = sessionAnalysis(s);
   if (!a || !a.ok) return null;
-  const res = TF.buildResults(a, s.profile || r.profile, (s.clips[0] || {}).hand, s.discomfort, Settings.v.units);
+  const res = TF.buildResults(a, s.profile || r.profile, (s.clips[0] || {}).hand, s.discomfort, Settings.v.units, { history: historyFor(r, s), bikeMeasures: s.bikeMeasures });
   res.cadence = a.cadence; res.strokes = a.strokes.length;
   return res;
 }
@@ -3393,18 +3580,19 @@ route('/rider/:id', async (main, { id }) => {
 }, { needsFile: true, nav: 'fit' });
 
 /* ---------- history ---------- */
-route('/history', async (main) => {
+route('/history', async () => { go('#/sessions'); });
+route('/sessions', async (main) => {
   const r = rider();
   const showAll = S.meta.historyAll && S.file.riders.length > 1;
   const items = (showAll ? allSessions() : (r ? r.sessions.map((s) => ({ rider: r, session: s })) : []))
     .sort((a, b) => (a.session.created < b.session.created ? 1 : -1));
   main.innerHTML = `
-    <div class="page-head"><div><h1>History</h1><div class="sub">${showAll ? 'Every rider in this file' : esc(r ? r.name : '')} · ${plural(items.length, 'session')}</div></div>
+    <div class="page-head"><div><h1>Sessions</h1><div class="sub">${showAll ? 'Every rider in this file' : esc(r ? r.name : '')} · ${plural(items.length, 'session')}</div></div>
       ${S.file.riders.length > 1 ? `<div class="seg" id="hs"><button data-v="one">${esc(r ? r.name : 'This rider')}</button><button data-v="all">All riders</button></div>` : ''}</div>
     ${items.length ? `<div class="list">${items.map((x) => sessionRow(x.rider, x.session, showAll)).join('')}</div>`
       : `<div class="empty panel">${icon('history')}<p>No sessions yet.</p><a class="btn primary" style="margin-top:12px" href="#/session/new">${icon('camera')}Start a fit session</a></div>`}`;
   $$('#hs button', main).forEach((b) => { b.classList.toggle('on', (b.dataset.v === 'all') === !!showAll); b.onclick = async () => { S.meta.historyAll = b.dataset.v === 'all'; await saveMeta(); render(); }; });
-}, { needsFile: true, nav: 'history' });
+}, { needsFile: true, nav: 'sessions' });
 
 /* ---------- settings ---------- */
 route('/settings', async (main) => {
@@ -3483,23 +3671,27 @@ route('/settings', async (main) => {
 route('/help', async (main) => {
   main.innerHTML = `<div class="help">
     <div class="page-head"><div><h1>Help</h1><div class="sub">How a fit works, and how to get good measurements.</div></div></div>
-    <div class="panel"><b>In short:</b> <span class="muted">set the bike on a trainer, stand the phone 2.5–3 m away pointing square at the bike, pedal steadily while the app records, tap six points on the bike, then make the one change it suggests and retest.</span></div>
-    <h2>Setting up</h2>
+    <div class="panel"><b>In short:</b> <span class="muted">put the bike on a trainer, stand the phone beside it so the bike sits in the outline on screen, mark eight points on the bike, then ride for about a minute while the app talks you through it. Make the one change it suggests, then retest. Fitting yourself or helping a friend, it works the same way.</span>
+      <div style="margin-top:10px"><a class="btn sm" href="#/intro?from=help">Show the introduction again</a></div></div>
+    <h2>Getting ready</h2>
     <ul>
-      <li><b>Trainer.</b> The bike must stay still and level for the whole recording. A rear-wheel or direct-drive trainer, or rollers with a front wheel riser, all work. Level the bike front to back.</li>
-      <li><b>Which side.</b> Film the non-drive side (the side without the chainring) so the chainring does not hide your foot.</li>
-      <li><b>Camera.</b> Landscape, 2.5–3 m away, pointing straight at the side of the bike, lens about level with the top of the wheels, and the phone level (not tilted up or down). Your whole body and both wheels must be in the frame.</li>
-      <li><b>Clothing and light.</b> Fitted clothing in a colour that stands out from the background; no baggy shorts or jackets. Light from the camera's side, not behind you.</li>
-      <li><b>Sound.</b> Volume up and, on iPhone, the silent switch off. The app talks you through the recording so you don't need to look at the screen.</li>
+      <li><b>Trainer.</b> The bike must stay still and level. A rear-wheel or direct-drive trainer, or rollers with a front-wheel riser, all work.</li>
+      <li><b>Which side.</b> Film the side without the chainring, so it doesn't hide the foot.</li>
+      <li><b>Clothing and light.</b> Fitted clothing that stands out from the background; light from the camera's side, not a bright window behind the bike.</li>
+      <li><b>Sound.</b> Volume up and, on iPhone, the silent switch off. Everything the rider needs to know while pedalling is spoken.</li>
     </ul>
-    <h2>Recording</h2>
-    <p>Tap <b>Start</b>, walk to the bike, and start pedalling at a steady, moderate effort you could hold for an hour (about 80–95 rpm). By default the app waits until your cadence is steady, counts ${Settings.v.startStrokes} strokes, and records for ${Settings.v.stopSeconds} seconds. You can change both in Settings. If something goes wrong, for example your knee was out of view, it tells you and tries again by itself.</p>
-    <details class="more"><summary>${icon('chevR')}What the beeps mean</summary><dl class="kv" style="margin-top:8px">${BEEP_LEGEND.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl></details>
-    <h2>The six taps</h2>
-    <p>Pose tracking finds your joints but cannot see the bike. After recording, the app shows a still frame with the crank level and asks you to tap: the rear axle, the top of the rear tyre, the back edge of the rear tyre, the front axle, the bottom bracket, and the pedal spindle. Hold your finger down to see a magnifier, slide to the exact point, and let go. From the crank length and wheel size you entered, these taps give the app its scale in millimetres, the bike's level, and the pedal position through the stroke. The two scales (wheel and crank) are checked against each other: if they disagree, the camera was not square to the bike.</p>
+    <h2>Placing the camera</h2>
+    <p>Turn the phone sideways and stand it 2.5–3 m from the bike, pointing straight at its side, with the lens about level with the top of the wheels. The camera fills the screen with an outline of a bike and rider: move the phone until the real wheels sit inside the outline's wheels. Nobody needs to be on the bike. Three checks along the top turn green: <b>Level</b> (from the phone's motion sensor; on a laptop, check by eye), <b>Landscape</b>, and <b>Light</b>. If someone is already on the bike, a fourth appears, <b>Rider in frame</b>, and turns amber if their head or feet are cut off. <b>Flip</b> mirrors the outline for a bike facing the other way.</p>
+    <h2>Marking the bike</h2>
+    <p>Tap <b>Mark the bike</b>. The picture freezes; mark eight points in turn: the rear axle, the top of the rear tyre, the back of the rear tyre, the front axle, the bottom bracket, the pedal spindle, the saddle nose and the top of the hood. Hold your finger down to see a magnifier, slide to the exact point and let go. Before the pedal spindle, set the near crank level and pointing forward (or ask your rider to, and hold still), then tap <b>Refresh frame</b>. Every point can be seen whether or not someone is on the bike.</p>
+    <p>From your crank length and wheel size, the marks give the app its scale, check that the camera is square and level and at a good distance, and measure the bike itself: saddle height to the nose, setback, drop to the hoods and reach. On a retest those numbers show exactly what changed. If the camera hasn't moved since a recent session, the app shows the earlier marks as teal rings; if they sit on the axles, tyre and bottom bracket, tap <b>They line up</b> and mark only the saddle nose and hood.</p>
+    <h2>Riding, and answering hands-free</h2>
+    <p>Tap <b>Ready to ride</b>. If the saddle is empty, the app says "walk to the bike and start pedalling"; if someone is already on, "start pedalling when you're ready". Pedal at a steady effort you could hold for an hour (about 80–95 rpm). By default it waits until your cadence is steady, counts ${Settings.v.startStrokes} strokes and records for ${Settings.v.stopSeconds} seconds; the two small buttons at the bottom left change that. It checks the recording before you get off.</p>
+    <p>When it asks a question (go again after a bad recording, record a second hand position, stop), answer by <b>raising your right hand above your head for yes</b> or your <b>left hand for no</b>, holding it for a moment; or say "yes" / "again" or "no" / "done" where the browser can listen; or tap the big buttons. It always says what it understood before acting. After a bad recording, doing nothing means it goes again, up to twice.</p>
+    <details class="more"><summary>${icon('chevR')}What the beeps mean</summary><dl class="kv" style="margin-top:8px">${BEEP_LEGEND.map(([a2, b2]) => `<dt>${esc(a2)}</dt><dd>${esc(b2)}</dd>`).join('')}</dl></details>
     <h2>Reading the results</h2>
     <p>Each measurement is shown against a target range for your bike, riding goal and hand position: <span class="status-good">green</span> is in range, <span class="status-warn">yellow</span> is close, <span class="status-bad">red</span> is outside. Every value also carries a confidence (three bars) based on how clearly the joints were seen and how steady the value was from stroke to stroke. Low-confidence values are greyed out and never drive a recommendation.</p>
-    <p>The app recommends <b>one change at a time</b>, in the order fitters use because changes interact: saddle height first, then saddle fore/aft. Amounts are given as a range (for example “raise the saddle 5–10 mm”). Make the change, then tap <b>retest</b>. Reach, drop, bar width and cleats arrive in the next version; their measurements are already shown.</p>
+    <p>The app recommends <b>one change at a time</b>, in the order fitters use because changes interact: saddle height first, then saddle fore/aft. Amounts are a range in 5 mm steps (for example “raise the saddle 5–10 mm”), never more than 10 mm at a time. Make the change, then tap <b>Retest</b>: the bike marks show whether the change was made and how much the measurement moved. If three rounds of changes have not brought a measurement into range, the app says to see a professional fitter. Reach, drop, bar width and cleats arrive in the next version; their measurements are already shown.</p>
     <h2>Discomfort and safety</h2>
     <p>The questions about discomfort help the app point at the measurements most often associated with where you feel it. The app never assumes discomfort is caused by your bike fit: if the related measurements are in range it says so, and lists other common causes. If you report severe discomfort, discomfort that lasts after rides, numbness, or a recent injury, it recommends seeing a clinician or professional fitter before changing anything.</p>
     <p><b>Tango Fitter is a self-fit guide, not medical advice.</b></p>
@@ -3510,6 +3702,8 @@ route('/help', async (main) => {
       <li><b>“Camera not allowed.”</b> Allow camera access for this site in the browser's settings (iPhone: Settings → Safari → Camera), then reload.</li>
       <li><b>No sound.</b> Volume up; iPhone silent switch off; tap Test sound in Settings.</li>
       <li><b>“I lost sight of your knee.”</b> Better light, more contrast between clothing and background, and check the whole body is in the frame.</li>
+      <li><b>“Your feet are cut off.”</b> Move the phone further back or a little higher.</li>
+      <li><b>The hand-raise isn't noticed.</b> Raise the hand clearly above your head and hold it for a second or two; or tap the button.</li>
       <li><b>Scales disagree / wheel looks oval.</b> Turn the phone so it points straight at the side of the bike, and keep it level.</li>
       <li><b>First analysis is slow.</b> The analysis engine (about 35 MB) downloads once; after that it works offline.</li>
     </ul>
@@ -3519,7 +3713,13 @@ route('/help', async (main) => {
 
 /* ---- app-session.js ---- */
 /* ==========================================================================
-   A fit session: check-in → setup → capture → calibrate → analyse → save
+   Tango Fitter 2.0 — a fit session (brief Part B)
+   Check-in → [full screen] place the camera → mark the bike → ride → check
+   (→ second hand position) → analyse → save.
+   The bike is the reference and the rider is optional until it is time to pedal:
+   every step works whether the saddle is empty (the user is the rider) or a
+   rider is already on (a helper is holding the phone). The app finds out which
+   by looking, and only its words change.
    ========================================================================== */
 const REGION_ORDER = C.discomfort.regions;
 const LEVEL_LABELS = { none: 'None', mild: 'Mild', moderate: 'Moderate', severe: 'Severe' };
@@ -3529,39 +3729,32 @@ route('/session/new', async (main, { query }) => {
   const r = rider();
   if (!r) { go('#/rider/new'); return; }
   const retestOf = query.get('retest');
-  const prev = retestOf ? findSession(retestOf) : null;
-  const prevRec = prev ? (sessionResults(prev.rider, prev.session) || {}).recommendation : null;
-  // The draft lives in memory until the analysis is saved.
+  const prev = retestOf ? findSession(retestOf) : lastSessionOf(r);
   if (!S.session || S.session.riderId !== r.id || S.session.retestOf !== (retestOf || null)) {
     S.session = {
       riderId: r.id, retestOf: retestOf || null, step: 'checkin', hand: r.profile.hands[0],
-      discomfort: prev && prev.session.discomfort ? JSON.parse(JSON.stringify(prev.session.discomfort)) : { regions: {}, numbness: false, recentInjury: false },
-      change: prevRec && prevRec.current ? { action: prevRec.current.text, made: 'yes', note: '' } : null,
+      discomfort: prev && prev.session && prev.session.discomfort ? JSON.parse(JSON.stringify(prev.session.discomfort)) : { regions: {}, numbness: false, recentInjury: false },
     };
   }
   const d = S.session;
-  const step = () => ({ checkin: renderCheckin, setup: renderSetup, calibrate: renderCalibrate, analyse: renderAnalyse, failed: renderFailed }[d.step] || renderCheckin)(main, r, d);
+  const step = () => ({ checkin: renderCheckin, analyse: renderAnalyse, failed: renderFailed }[d.step] || renderCheckin)(main, r, d);
   d.rerender = () => { main.innerHTML = ''; step(); };
   step();
 }, { needsFile: true, nav: 'fit' });
 
-function wizardHead(n, title, sub) {
-  return `<div class="wizard-head"><div class="progress-dots">${[1, 2, 3, 4].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</div><span class="caption">Step ${n} of 4</span></div>
-    <div class="page-head"><div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div></div>`;
+function lastSessionOf(r) {
+  const s = r.sessions.filter((x) => !x.sample).slice().sort((a, b) => (a.created < b.created ? 1 : -1))[0];
+  return s ? { rider: r, session: s } : null;
 }
 
-/* ---------- 1. check-in ---------- */
+/* ---------- check-in: one short screen ---------- */
 function renderCheckin(main, r, d) {
-  const gate = () => TF.discomfortGate(d.discomfort);
   const hands = r.profile.hands;
   main.innerHTML = `
-    ${wizardHead(1, 'Before you ride', 'A few questions so the results focus on what matters to you.')}
+    <div class="page-head"><div><h1>${d.retestOf ? 'Retest' : 'Before you ride'}</h1><div class="sub">${d.retestOf ? 'Same as last time unless something has changed. The marks will show what changed on the bike.' : 'A few questions so the results focus on what matters to you.'}</div></div></div>
     <div class="stack">
-      ${d.change ? `<div class="panel accent stack"><div class="caption">Retest</div><p>Last time the suggestion was: <b>${esc(d.change.action)}</b></p>
-        <div class="field"><span class="label">Did you make that change?</span><div class="seg" id="ck-made"><button data-v="yes">Yes, as suggested</button><button data-v="different">A different change</button><button data-v="no">No change</button></div></div>
-        <div class="field" id="ck-note-wrap" ${d.change.made === 'different' ? '' : 'hidden'}><label for="ck-note">What did you change?</label><input id="ck-note" value="${esc(d.change.note)}" placeholder="e.g. raised the saddle 5 mm"></div></div>` : ''}
-      ${hands.length > 1 ? `<div class="panel stack"><div class="field"><span class="label">Hand position for this recording</span><div class="chips" id="ck-hand">${hands.map((h) => `<button class="chip ${h === d.hand ? 'on' : ''}" data-h="${h}">${esc(TF.HAND_POSITIONS[h])}</button>`).join('')}</div>
-        <span class="hint">This version records one hand position per session. Saddle advice uses your main position (${esc(TF.HAND_POSITIONS[hands[0]])}).</span></div></div>` : ''}
+      ${hands.length > 1 ? `<div class="panel stack"><div class="field"><span class="label">Hand position to record first</span><div class="chips" id="ck-hand">${hands.map((h) => `<button class="chip ${h === d.hand ? 'on' : ''}" data-h="${h}">${esc(TF.HAND_POSITIONS[h])}</button>`).join('')}</div>
+        <span class="hint">After a good recording you can record ${esc(TF.HAND_POSITIONS[hands.find((h) => h !== d.hand)] || 'another position')} too, without getting off the bike. Saddle advice uses your main position (${esc(TF.HAND_POSITIONS[hands[0]])}).</span></div></div>` : ''}
       <div class="panel">
         <h2>Any discomfort when you ride?</h2>
         <p class="muted small" style="margin-top:4px">This points the results at the measurements most often associated with where you feel it. It doesn't assume the cause is your bike fit.</p>
@@ -3572,13 +3765,15 @@ function renderCheckin(main, r, d) {
         </div>
       </div>
       <div id="ck-gate"></div>
-      <div class="btn-row"><button class="btn primary lg" id="ck-next">Next: set up ${icon('chevR')}</button><a class="btn quiet" href="#/" id="ck-cancel">Cancel</a></div>
+      ${!CAPS.canRecord ? `<div class="banner bad">${icon('alert')}<div class="grow"><b>This browser can't record.</b> ${!CAPS.secure ? 'The camera needs the https address of Tango Fitter.' : 'Use an up-to-date iPhone, iPad or laptop browser.'}</div></div>` : ''}
+      <div class="btn-row"><button class="btn primary lg" id="ck-go" ${CAPS.canRecord ? '' : 'disabled'}>${icon('camera')}Set up the camera</button><a class="btn quiet" href="#/" id="ck-cancel">Cancel</a></div>
+      <p class="small faint">Fitting yourself or helping a friend, it works the same way. Sound on: the app talks you through it.</p>
     </div>`;
   const paintRegions = () => {
     $('#ck-regions', main).innerHTML = REGION_ORDER.map((k) => {
       const a = d.discomfort.regions[k] || { level: 'none' };
       return `<div class="region" data-r="${k}"><div class="rhead"><b>${esc(TF.REGIONS[k].label)}</b>
-        <div class="seg sm">${Object.entries(LEVEL_LABELS).map(([v, l]) => `<button data-l="${v}" class="${a.level === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+        <div class="seg sm">${Object.entries(LEVEL_LABELS).map(([v, l]) => `<button data-l="${v}" class="${(a.level || 'none') === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
         ${a.level && a.level !== 'none' ? `<div class="seg sm">${Object.entries(PATTERN_LABELS).map(([v, l]) => `<button data-p="${v}" class="${a.pattern === v ? 'on' : ''}">${l}</button>`).join('')}</div>` : ''}</div>`;
     }).join('');
     $$('.region', main).forEach((row) => {
@@ -3588,94 +3783,139 @@ function renderCheckin(main, r, d) {
     });
   };
   const paintGate = () => {
-    const g = gate();
+    const g = TF.discomfortGate(d.discomfort);
     $('#ck-gate', main).innerHTML = g.gated ? `<div class="banner warn">${icon('alert')}<div class="grow"><b>Please see a professional before changing your bike.</b> You mentioned ${esc(g.reasons.join(', '))}. A clinician or professional bike fitter should look at that first. You can still record and see your measurements; any suggestions will be marked as for discussion with a professional.</div></div>` : '';
   };
   paintRegions(); paintGate();
   $('#ck-numb', main).onchange = (e) => { d.discomfort.numbness = e.target.checked; paintGate(); };
   $('#ck-injury', main).onchange = (e) => { d.discomfort.recentInjury = e.target.checked; paintGate(); };
   $$('#ck-hand .chip', main).forEach((c) => (c.onclick = () => { d.hand = c.dataset.h; $$('#ck-hand .chip', main).forEach((x) => x.classList.toggle('on', x === c)); }));
-  if (d.change) {
-    $$('#ck-made button', main).forEach((b) => { b.classList.toggle('on', b.dataset.v === d.change.made); b.onclick = () => { d.change.made = b.dataset.v; $$('#ck-made button', main).forEach((x) => x.classList.toggle('on', x === b)); $('#ck-note-wrap', main).hidden = b.dataset.v !== 'different'; }; });
-    $('#ck-note', main).oninput = (e) => { d.change.note = e.target.value; };
-  }
-  $('#ck-next', main).onclick = () => { d.step = 'setup'; d.rerender(); };
   $('#ck-cancel', main).onclick = () => { S.session = null; };
-}
-
-/* ---------- 2. setup ---------- */
-function triggerSummary() {
-  const v = Settings.v;
-  const start = v.startMode === 'strokes' ? `after ${v.startStrokes} steady pedal strokes` : v.startMode === 'beeps' ? `after ${v.startBeeps} beeps` : `${v.startSeconds} seconds after you tap Start`;
-  const stop = v.stopMode === 'strokes' ? `for ${v.stopStrokes} pedal strokes` : `for ${v.stopSeconds} seconds`;
-  return { start, stop };
-}
-function renderSetup(main, r, d) {
-  const t = triggerSummary();
-  const cards = [
-    { title: 'Bike on the trainer, level', art: SETUP_ART.rig(), points: ['Use a trainer or rollers so the bike stays still and upright.', 'Level the bike front to back (a front-wheel riser helps).', 'Use the bike, shoes and clothing you normally ride in.'] },
-    { title: 'Camera beside the bike', art: SETUP_ART.camera(), points: ['Film the side without the chainring, so it doesn\'t hide your foot.', '2.5–3 m away, pointing straight at the side of the bike.', 'Landscape, on a stand or shelf so it does not move.'] },
-    { title: 'Camera height and level', art: SETUP_ART.height(), points: ['Lens about level with the top of the wheels.', 'Keep the phone level: not tilted up or down. The app shows a level reading when the phone has a motion sensor.', 'Your whole body and both wheels in the frame.'] },
-    { title: 'Clothing, light and sound', art: SETUP_ART.clothes(), points: ['Fitted clothing that stands out from the background; no baggy shorts.', 'Light from the camera side, not a bright window behind you.', 'Volume up. On iPhone, the silent switch off.'] },
-  ];
-  main.innerHTML = `
-    ${wizardHead(2, 'Set up', 'Two minutes now saves a retake. The app checks each of these on the camera screen.')}
-    ${!CAPS.canRecord ? `<div class="banner bad" style="margin-bottom:14px">${icon('alert')}<div class="grow"><b>This browser can't record.</b> ${!CAPS.secure ? 'The camera needs the https address of Tango Fitter.' : 'Use an up-to-date iPhone, iPad or laptop browser.'}</div></div>` : ''}
-    <div class="stack">${cards.map((c, i) => `<div class="panel setup-card"><div class="art">${c.art}</div><div><div class="caption">${i + 1} of ${cards.length}</div><h2 style="margin:4px 0 8px">${esc(c.title)}</h2><ul>${c.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul></div></div>`).join('')}
-      <div class="panel stack"><h2>What happens next</h2>
-        <p class="muted">Tap <b>Start</b> on the camera screen, then get on the bike and pedal at a steady, moderate effort you could hold for an hour. Recording starts ${esc(t.start)} and runs ${esc(t.stop)}. The app talks you through it, and checks the recording before you get off.</p>
-        <details class="more"><summary>${icon('chevR')}What the beeps mean</summary><dl class="kv" style="margin-top:8px">${BEEP_LEGEND.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl></details>
-        <div><a class="btn sm quiet" href="#/settings">Change timing or sound in Settings</a></div></div>
-      <div class="btn-row"><button class="btn primary lg" id="su-go" ${CAPS.canRecord ? '' : 'disabled'}>${icon('camera')}Open the camera</button><button class="btn quiet" id="su-back">${icon('chevL')}Back</button></div>
-    </div>`;
-  $('#su-back', main).onclick = () => { d.step = 'checkin'; d.rerender(); };
-  $('#su-go', main).onclick = async () => {
-    const res = await runCapture(d);
-    if (res && res.ok) { d.capture = res; d.step = 'calibrate'; d.rerender(); }
+  $('#ck-go', main).onclick = async () => {
+    // This tap unlocks sound and asks for the motion sensor (both need a tap on iOS).
+    Sound.unlock();
+    await requestMotion();
+    const res = await runFit(r, d);
+    if (res) { d.capture = res; d.step = 'analyse'; d.rerender(); }
   };
 }
 
-/* ---------- 3. capture (full screen) ---------- */
+async function requestMotion() {
+  try { if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') await DeviceOrientationEvent.requestPermission(); } catch { /* declined: the Level check shows "check by eye" */ }
+}
+
 function levelFromOrientation(e, backCamera) {
   if (e.beta == null || e.gamma == null) return null;
   const R = Math.PI / 180, b = e.beta * R, g = e.gamma * R;
   const up = { x: -Math.sin(g) * Math.cos(b), y: Math.sin(b), z: Math.cos(g) * Math.cos(b) };
-  const pitch = Math.asin(Math.max(-1, Math.min(1, backCamera ? -up.z : up.z))) / R; // optical axis above (+) or below (−) horizontal
+  const pitch = Math.asin(Math.max(-1, Math.min(1, backCamera ? -up.z : up.z))) / R; // optical axis above (+) or below (−) level
   const ang = ((screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0) * R;
   const imgUp = { x: -Math.sin(ang), y: Math.cos(ang) }, imgRight = { x: Math.cos(ang), y: Math.sin(ang) };
   const roll = Math.atan2(up.x * imgRight.x + up.y * imgRight.y, up.x * imgUp.x + up.y * imgUp.y) / R;
   return { pitch, roll };
 }
 
+/* ---------- hands-free replies: voice (where the browser has it) ---------- */
+const Listener = {
+  rec: null, active: false, onWord: null,
+  available() { return !!(window.SpeechRecognition || window.webkitSpeechRecognition); },
+  start(words, onWord) {
+    if (!Settings.v.voiceReplies || !this.available()) return false;
+    this.stop();
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+    try {
+      const rec = new R(); rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true;
+      rec.onresult = (ev) => {
+        for (let i = ev.resultIndex; i < ev.results.length; i++) {
+          const t = ev.results[i][0].transcript.toLowerCase();
+          const w = words.find((x) => new RegExp(`\\b${x}\\b`).test(t));
+          if (w && this.onWord) { const f = this.onWord; this.stop(); f(w); return; }
+        }
+      };
+      rec.onend = () => { if (this.active) { try { rec.start(); } catch { /* restarting too fast */ } } };
+      rec.onerror = () => {};
+      this.rec = rec; this.active = true; this.onWord = onWord;
+      rec.start();
+      return true;
+    } catch { this.active = false; return false; }
+  },
+  stop() { this.active = false; this.onWord = null; if (this.rec) { try { this.rec.abort(); } catch { /* ignore */ } this.rec = null; } },
+};
+
+/* ---------- the full-screen fit: place → mark → ride → check ---------- */
+const MARK_KEYS = TF.BIKE_MARKS.map((m) => m.key);
+const STATIC_MARKS = ['rearAxle', 'tyreTop', 'tyreBack', 'frontAxle', 'bb', 'spindle']; // reused on a retest when the camera has not moved
+
+function previousMarks(r, W, H) {
+  const cutoff = Date.now() - C.calibration.reuseMaxHours * 3600e3;
+  const s = r.sessions.filter((x) => !x.sample && x.marks && MARK_KEYS.every((k) => x.marks[k]) && Date.parse(x.created) > cutoff)
+    .sort((a, b) => (a.created < b.created ? 1 : -1))[0];
+  if (!s) return null;
+  const c = s.clips[0];
+  if (c && (c.width !== W || c.height !== H)) return null;
+  return { session: s, marks: s.marks };
+}
+
 /**
- * runCapture(draft) → Promise<{ ok, blob, mime, width, height, fps, durationS, live: {frames, strokes, cadence}, calT } | null>
- * State machine: preview → waiting (rider gets on, cadence settles) → countdown → recording → checking → done / retry.
+ * runFit(rider, draft) → Promise<{ clips: [clip…], cal, marks, markedWithRider, replies } | null>
+ * States: placing → marking → marked → waiting → counting | beeping → recording → checking → question → … → done.
  */
-function runCapture(d) {
+function runFit(r, d) {
   return new Promise((resolve) => {
-    const T = C.triggers, F = C.framing, V = Settings.v;
-    const ui = el(`<div class="capture" role="dialog" aria-label="Camera">
-      <div class="stage"><video playsinline muted autoplay></video><canvas class="overlay"></canvas>${framingGuideSVG()}<div class="bigcount" hidden></div>
-        <div class="hud-top"><button class="btn sm" id="cx">${icon('x')}Close</button>
-          <div class="row wrap" style="justify-content:flex-end"><span class="pill" id="cfps"></span><span class="pill" id="clevel" hidden></span><span class="pill" id="cpill">Camera</span><button class="icon-btn" id="cflip" title="Switch camera">${icon('flip')}</button></div></div>
-      </div>
-      <div class="hud-bottom"><div class="status"><div class="big" id="cbig">Starting the camera…</div><div class="small" id="csmall"></div></div>
-        <div class="checklist" id="cchk"></div>
-        <div class="btn-row" style="justify-content:center"><button class="btn primary lg" id="cstart" disabled>${icon('play')}Start</button><button class="btn lg" id="cretry" hidden>${icon('refresh')}Try again</button><button class="btn primary lg" id="ccont" hidden>Continue ${icon('chevR')}</button></div>
-      </div></div>`);
+    const T = C.triggers, F = C.framing, V = Settings.v, K = C.camera;
+    const ui = el(`<div class="fit" role="dialog" aria-label="Camera">
+      <div class="frame"><video playsinline muted autoplay></video><canvas class="still" hidden></canvas><div class="silwrap"></div><canvas class="ov"></canvas><div class="bigcount" hidden></div><div class="loupe" hidden><canvas width="264" height="264"></canvas></div></div>
+      <div class="corner tl"><button class="pill btn-pill" id="fx-close">${icon('x')}Close</button><div class="lights" id="fx-lights"></div></div>
+      <div class="markpill" id="fx-markpill" hidden></div>
+      <div class="corner tr fadeable"><button class="pill btn-pill" id="fx-flip" title="Mirror the outline">${icon('flip')}Flip</button><button class="pill btn-pill" id="fx-cam" hidden>${icon('camera')}Camera</button><button class="pill btn-pill" id="fx-torch" hidden>Light</button><button class="pill btn-pill" id="fx-sound" hidden>${icon('volume')}Tap for sound</button></div>
+      <div class="corner bl fadeable" id="fx-trig" hidden></div>
+      <div class="status" id="fx-status"><span id="fx-big"></span><span id="fx-small"></span></div>
+      <div class="corner br" id="fx-actions"></div>
+      <div class="result-card" id="fx-result" hidden></div>
+      <div class="question" id="fx-q" hidden></div>
+      <div class="nudge" id="fx-nudge" hidden>${icon('refresh')}Turn your phone sideways for a bigger view</div>
+    </div>`);
     document.body.appendChild(ui);
     document.body.style.overflow = 'hidden';
-    const video = $('video', ui), canvas = $('canvas.overlay', ui), ctx = canvas.getContext('2d');
-    const big = $('#cbig', ui), small = $('#csmall', ui), pill = $('#cpill', ui), chk = $('#cchk', ui), bigcount = $('.bigcount', ui);
-    const setStatus = (b, s) => { big.textContent = b; small.textContent = s || ''; };
+    $$('.toasts .toast').forEach((t) => t.remove());
+    const $u = (sel) => $(sel, ui);
+    const frame = $u('.frame'), video = $u('video'), still = $u('canvas.still'), ov = $u('canvas.ov'), silwrap = $u('.silwrap'), bigcount = $u('.bigcount');
+    const ctx = ov.getContext('2d');
     const cap = {
-      state: 'preview', stream: null, det: null, raf: 0, lastDetect: 0, lm: null, side: null,
-      sc: new TF.StrokeCounter(), framingOkSince: null, framingBadSince: null, lowLightSince: null, lastHint: 0,
-      recorder: null, chunks: [], recStart: 0, recFrames: [], recStrokes: 0, tries: 0, startedAt: 0, countStrokes: 0,
-      level: null, wakeLock: null, closed: false, liveFps: 0, fpsCount: 0, fpsT: 0, sayCadenceAt: 0, timers: [],
+      state: 'placing', stream: null, det: null, raf: 0, lastDetect: 0, lm: null, side: null, W: 0, H: 0,
+      flip: !!V.silhouetteFlip, level: null, luma: NaN, lastLuma: 0, rider: false, riderSince: null, riderSeenOnce: false, cuts: { headCut: false, feetCut: false },
+      marks: {}, markIdx: 0, frozenLm: null, cal: null, markedWithRider: false, ghosts: null, prevMarks: null,
+      sc: new TF.StrokeCounter(), framingOkSince: null, framingBadSince: null, issueSince: null, saidIssue: {},
+      recorder: null, chunks: [], recStart: 0, recFrames: [], recStrokes: 0, countStrokes: 0, tries: 0, sayCadence: true,
+      hand: d.hand, clips: [], replies: [], question: null, gestureSince: { right: null, left: null },
+      wakeLock: null, closed: false, timers: [], fadeTimer: 0, mime: '',
     };
     const later = (fn, ms) => { const id = setTimeout(fn, ms); cap.timers.push(id); return id; };
+    const status = (big, small) => { $u('#fx-big').textContent = big || ''; $u('#fx-small').textContent = small || ''; $u('#fx-status').hidden = !big && !small; };
+    const actions = (html) => { $u('#fx-actions').innerHTML = html || ''; };
+    const riding = () => ['waiting', 'counting', 'beeping', 'recording'].includes(cap.state);
+    const otherHand = () => r.profile.hands.find((h) => h !== d.hand && !cap.clips.some((c) => c.hand === h));
 
+    /* ----- layout: the video frame, contained, with the overlays sized to it ----- */
+    function layout() {
+      const vw = video.videoWidth || 16, vh = video.videoHeight || 9;
+      const sw = window.innerWidth, sh = window.innerHeight;
+      const s = Math.min(sw / vw, sh / vh);
+      const w = vw * s, h = vh * s;
+      Object.assign(frame.style, { width: `${w}px`, height: `${h}px`, left: `${(sw - w) / 2}px`, top: `${(sh - h) / 2}px` });
+      const dpr = window.devicePixelRatio || 1;
+      ov.width = Math.round(w * dpr); ov.height = Math.round(h * dpr);
+      if (cap.W !== vw || cap.H !== vh) { cap.W = vw; cap.H = vh; still.width = vw; still.height = vh; drawSilhouette(); }
+      $u('#fx-nudge').hidden = !(sh > sw);
+    }
+    function drawSilhouette() {
+      if (!cap.W) return;
+      silwrap.innerHTML = cap.state === 'placing' ? silhouetteSVG(cap.W, cap.H, cap.flip, cap.ghosts) : '';
+    }
+    const toCanvas = (p) => { const k = ov.width / cap.W; return { x: p.x * k, y: p.y * k }; };
+    const lmPx = (lm, i) => ({ x: lm[i][0] * cap.W, y: lm[i][1] * cap.H });
+
+    /* ----- camera ----- */
     async function openCamera() {
       if (cap.stream) cap.stream.getTracks().forEach((t) => t.stop());
       const cons = { audio: false, video: { width: { ideal: C.capture.idealWidth }, height: { ideal: C.capture.idealHeight }, frameRate: { ideal: C.capture.idealFps } } };
@@ -3683,166 +3923,352 @@ function runCapture(d) {
       try { cap.stream = await navigator.mediaDevices.getUserMedia(cons); }
       catch (e) {
         if (V.cameraId) { Settings.set('cameraId', ''); return openCamera(); }
-        setStatus('Camera not available', e.name === 'NotAllowedError' ? 'Camera access was blocked. Allow it for this site in your browser settings, then try again.' : (e.message || String(e)));
+        status('Camera not available', e.name === 'NotAllowedError' ? 'Camera access was blocked. Allow it for this site in your browser settings, then try again.' : (e.message || String(e)));
         return false;
       }
       video.srcObject = cap.stream;
       await video.play().catch(() => {});
-      await new Promise((r) => (video.readyState >= 2 ? r() : video.addEventListener('loadeddata', r, { once: true })));
-      const s = cap.stream.getVideoTracks()[0].getSettings();
-      $('#cfps', ui).textContent = `${s.width || video.videoWidth}×${s.height || video.videoHeight} · ${Math.round(s.frameRate || 30)} fps`;
+      await new Promise((res) => (video.readyState >= 2 ? res() : video.addEventListener('loadeddata', res, { once: true })));
+      layout();
+      const track = cap.stream.getVideoTracks()[0];
+      const caps = track.getCapabilities ? track.getCapabilities() : {};
+      $u('#fx-torch').hidden = !caps.torch;
+      const devs = (await navigator.mediaDevices.enumerateDevices()).filter((x) => x.kind === 'videoinput');
+      $u('#fx-cam').hidden = devs.length < 2;
       return true;
     }
 
     async function init() {
-      setStatus('Starting the camera…');
+      status('Starting the camera…');
       if (!(await openCamera())) return;
-      setStatus('Loading the tracker…', 'First time only: downloading the analysis engine.');
-      try {
-        cap.det = await loadPose('lite', (p, cached) => { if (!cached) setStatus('Loading the tracker…', `Downloading the analysis engine: ${Math.round(p * 100)}%`); });
-      } catch (e) { setStatus('Could not load the tracker', `${e.message} Check the internet connection and try again.`); return; }
-      $('#cstart', ui).disabled = false;
-      setStatus('Frame the shot', 'Get the whole bike and your body in view, then tap Start.');
+      window.addEventListener('resize', layout);
+      window.addEventListener('deviceorientation', onOrient);
+      try { cap.wakeLock = await navigator.wakeLock.request('screen'); } catch { /* not supported */ }
+      if (Sound.ctx && Sound.ctx.state === 'suspended') $u('#fx-sound').hidden = false;
+      cap.prevMarks = previousMarks(r, cap.W, cap.H);
+      enterPlacing(true);
       loop();
+      // The tracker loads in the background; placing needs no rider.
+      try { cap.det = await loadPose('lite', () => {}); } catch (e) { console.warn('tracker', e); toast(`The tracker could not load: ${esc(e.message)} Check the internet connection.`, 6000); }
     }
 
-    function vToCanvas() {
-      // Map normalised video coordinates to the canvas (object-fit: contain).
-      const cw = canvas.clientWidth, ch = canvas.clientHeight, dpr = window.devicePixelRatio || 1;
-      if (canvas.width !== Math.round(cw * dpr)) { canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr); }
-      const vw = video.videoWidth || 16, vh = video.videoHeight || 9, s = Math.min(cw / vw, ch / vh);
-      const ox = (cw - vw * s) / 2, oy = (ch - vh * s) / 2;
-      return (p) => ({ x: (ox + p[0] * vw * s) * dpr, y: (oy + p[1] * vh * s) * dpr });
+    /* ----- lights ----- */
+    function onOrient(e) { const lv = levelFromOrientation(e, V.cameraFacing !== 'user'); if (lv) cap.level = lv; }
+    function paintLights() {
+      const items = [];
+      const tol = K.levelToleranceDeg;
+      if (cap.level) {
+        const ok = Math.abs(cap.level.pitch) <= tol && Math.abs(cap.level.roll) <= tol;
+        const hint = ok ? '' : Math.abs(cap.level.pitch) > Math.abs(cap.level.roll) ? ` · tilted ${Math.round(Math.abs(cap.level.pitch))}° ${cap.level.pitch > 0 ? 'up' : 'down'}` : ` · rotated ${Math.round(Math.abs(cap.level.roll))}°`;
+        items.push([ok ? 'ok' : 'warn', `Level${hint}`]);
+      } else items.push(['unk', 'Level · check by eye']);
+      items.push([cap.W > cap.H ? 'ok' : 'warn', 'Landscape']);
+      $u('#fx-lights').hidden = cap.state !== 'placing';
+      if (Number.isFinite(cap.luma)) items.push([cap.luma >= K.lightMin ? 'ok' : 'warn', cap.luma >= K.lightMin ? 'Light' : 'Light · too dark']);
+      if (cap.rider && !riding()) items.push([cap.cuts.headCut || cap.cuts.feetCut ? 'warn' : 'ok', cap.cuts.feetCut ? 'Rider · feet cut off' : cap.cuts.headCut ? 'Rider · head cut off' : 'Rider in frame']);
+      $u('#fx-lights').innerHTML = items.map(([c, t]) => `<span class="light ${c}"><i></i>${esc(t)}</span>`).join('');
     }
-    function drawSkeleton(lm, side) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (!lm) return;
-      const map = vToCanvas(), idx = TF.LM[side], dpr = window.devicePixelRatio || 1;
-      const P = (n) => map(lm[idx[n]]);
-      const seen = (n) => lm[idx[n]][2] >= F.visibilityThreshold;
-      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      const seg = (a, b) => { if (!seen(a) || !seen(b)) return; const p = P(a), q = P(b); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); };
-      ctx.strokeStyle = 'rgba(255,106,26,.95)'; ctx.lineWidth = 4 * dpr;
-      [['shoulder', 'elbow'], ['elbow', 'wrist'], ['shoulder', 'hip'], ['hip', 'knee'], ['knee', 'ankle'], ['ankle', 'heel'], ['heel', 'toe'], ['ankle', 'toe']].forEach(([a, b]) => seg(a, b));
-      for (const n of TF.REQUIRED_JOINTS) {
-        const p = P(n); ctx.beginPath(); ctx.arc(p.x, p.y, 6 * dpr, 0, Math.PI * 2);
-        ctx.fillStyle = seen(n) ? '#fff' : 'rgba(240,80,110,.95)'; ctx.fill();
-      }
-    }
-    function paintChecklist(fc) {
-      const items = [['Rider', !!cap.lm], ['Knee', !fc.missing.includes('knee')], ['Ankle and foot', !fc.missing.includes('ankle') && !fc.missing.includes('toe')], ['Hip', !fc.missing.includes('hip')], ['Shoulder', !fc.missing.includes('shoulder')], ['Arm and hand', !fc.missing.includes('elbow') && !fc.missing.includes('wrist')]];
-      if (cap.level) items.push(['Phone level', Math.abs(cap.level.pitch) <= 3 && Math.abs(cap.level.roll) <= 3]);
-      if (video.videoHeight > video.videoWidth) items.push(['Landscape', false]);
-      chk.innerHTML = items.map(([l, ok]) => `<span class="${ok ? 'ok' : 'no'}">${ok ? '✓' : '✕'} ${esc(l)}</span>`).join('');
+    function measureLight() {
+      try {
+        const c = measureLight.c || (measureLight.c = document.createElement('canvas'));
+        c.width = 48; c.height = 27;
+        const g = c.getContext('2d', { willReadFrequently: true });
+        g.drawImage(video, 0, 0, 48, 27);
+        const px = g.getImageData(0, 0, 48, 27).data;
+        let sum = 0; for (let i = 0; i < px.length; i += 4) sum += 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
+        cap.luma = sum / (px.length / 4) / 255;
+      } catch { /* a cross-origin or not-ready frame */ }
     }
 
+    /* ----- one loop: presence at 2 fps while setting up, full rate while riding ----- */
     function loop() {
       if (cap.closed) return;
       cap.raf = requestAnimationFrame(loop);
       const now = performance.now();
-      if (!cap.det || video.readyState < 2 || now - cap.lastDetect < 1000 / C.capture.liveDetectFps) return;
+      if (now - cap.lastLuma > 500 && (cap.state === 'placing' || cap.state === 'marking' || cap.state === 'marked')) { cap.lastLuma = now; measureLight(); paintLights(); }
+      if (!cap.det || video.readyState < 2) return;
+      const fast = riding() || cap.state === 'question' || cap.state === 'checking';
+      if (now - cap.lastDetect < 1000 / (fast ? C.capture.liveDetectFps : C.presence.checkFps)) return;
       cap.lastDetect = now;
       let lm = null;
       try { lm = cap.det.detect(video, now); } catch (e) { console.warn(e); }
       cap.lm = lm;
-      cap.fpsCount++; if (now - cap.fpsT > 1000) { cap.liveFps = cap.fpsCount * 1000 / (now - cap.fpsT); cap.fpsCount = 0; cap.fpsT = now; }
-      const side = lm ? (cap.side || (TF.framingCheck(lm).side)) : 'left';
+      const on = TF.riderPresent(lm, Object.keys(cap.marks).length >= 5 ? cap.marks : null, cap.W, cap.H);
+      if (on && !cap.rider) { cap.riderSince = now; }
+      cap.rider = on;
+      const side = lm ? (cap.side || TF.framingCheck(lm).side) : 'left';
       const fc = TF.framingCheck(lm, side);
+      cap.cuts = { headCut: !!fc.headCut, feetCut: !!fc.feetCut };
+      if (cap.state === 'placing' || cap.state === 'marking' || cap.state === 'marked') { if (cap.state === 'placing') drawSkeleton(on ? lm : null, side); return; }
       if (lm && fc.ok && !cap.side) cap.side = fc.side;
       drawSkeleton(lm, side);
-      paintChecklist(fc);
-      // Framing timers.
-      if (fc.ok) { cap.framingOkSince = cap.framingOkSince || now; cap.framingBadSince = null; } else { cap.framingBadSince = cap.framingBadSince || now; cap.framingOkSince = null; }
-      if (lm && fc.meanVis < F.lowLightVisibility) cap.lowLightSince = cap.lowLightSince || now; else cap.lowLightSince = null;
       // Strokes from the camera-side foot.
       let ev = null;
       if (lm) { const toe = lm[TF.LM[side].toe]; if (toe[2] >= 0.4) ev = cap.sc.push(now / 1000, toe[1]); }
-      if (cap.state === 'recording') {
-        cap.recFrames.push({ t: (now - cap.recStart) / 1000, lm });
-        if (ev) { cap.recStrokes++; Sound.beep('tick'); }
-      }
+      if (cap.state === 'recording') { cap.recFrames.push({ t: (now - cap.recStart) / 1000, lm }); if (ev) { cap.recStrokes++; Sound.beep('tick'); } }
+      if (fc.ok) { cap.framingOkSince = cap.framingOkSince || now; cap.framingBadSince = null; } else { cap.framingBadSince = cap.framingBadSince || now; cap.framingOkSince = null; }
+      gestures(lm, now);
       tick(now, fc, ev);
     }
 
-    const framingOk = (now) => cap.framingOkSince && now - cap.framingOkSince >= F.stableMs;
-    function hint(now, fc) {
-      if (now - cap.lastHint < 8000) return;
-      if (!cap.lm) { cap.lastHint = now; Sound.say("I can't see you yet. Check the camera can see the whole bike and your body."); return; }
-      if (fc.missing.length) { cap.lastHint = now; Sound.say(`I can't see ${TF.describeMissing(fc.missing)}. Check you're fully in the frame.`); return; }
-      if (cap.lowLightSince && now - cap.lowLightSince > F.lowLightMs) { cap.lastHint = now; Sound.say('It is a little dark. More light would help.'); }
+    function drawSkeleton(lm, side) {
+      ctx.clearRect(0, 0, ov.width, ov.height);
+      if (cap.state === 'marking' || cap.state === 'marked') { paintMarks(); return; }
+      if (!lm) return;
+      const idx = TF.LM[side], dpr = window.devicePixelRatio || 1;
+      const P = (n) => toCanvas(lmPx(lm, idx[n]));
+      const seen = (n) => lm[idx[n]][2] >= F.visibilityThreshold;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(255,106,26,.95)'; ctx.lineWidth = 4 * dpr;
+      for (const [a, b] of [['shoulder', 'elbow'], ['elbow', 'wrist'], ['shoulder', 'hip'], ['hip', 'knee'], ['knee', 'ankle'], ['ankle', 'heel'], ['heel', 'toe'], ['ankle', 'toe']]) {
+        if (!seen(a) || !seen(b)) continue; const p = P(a), q = P(b); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+      }
+      for (const n of TF.REQUIRED_JOINTS) { const p = P(n); ctx.beginPath(); ctx.arc(p.x, p.y, 6 * dpr, 0, 7); ctx.fillStyle = seen(n) ? '#fff' : 'rgba(240,80,110,.95)'; ctx.fill(); }
     }
 
-    function tick(now, fc, ev) {
-      const cad = cap.sc.cadence();
-      if (cap.state === 'preview') {
-        if (!cap.lm) setStatus('Frame the shot', 'Nobody in view yet. Get the whole bike and your body in the frame.');
-        else if (fc.missing.length) setStatus('Frame the shot', `Can't see ${TF.describeMissing(fc.missing)}.`);
-        else setStatus('Looks good', 'Tap Start, then get on the bike.');
-        pill.textContent = cap.lm ? 'Tracking' : 'Looking for you';
-        return;
+    /* ----- placing ----- */
+    function enterPlacing(first) {
+      cap.state = 'placing'; ui.classList.remove('faded');
+      still.hidden = true; video.hidden = false; $u('#fx-markpill').hidden = true; $u('#fx-result').hidden = true; $u('#fx-trig').hidden = true; $u('#fx-q').hidden = true; bigcount.hidden = true;
+      drawSilhouette(); paintLights();
+      const hasMarks = MARK_KEYS.every((k) => cap.marks[k]);
+      if (cap.prevMarks && !hasMarks && !cap.ghostsDismissed) {
+        cap.ghosts = Object.fromEntries(STATIC_MARKS.map((k) => [k, cap.prevMarks.marks[k]]));
+        drawSilhouette();
+        status('Camera not moved since last time?', 'If the teal rings sit on the axles, the tyre and the bottom bracket, they line up.');
+        actions(`<button class="btn" id="fx-ghost-no">Mark again</button><button class="btn primary" id="fx-ghost-yes">They line up</button>`);
+        $u('#fx-ghost-yes').onclick = () => {
+          cap.marks = JSON.parse(JSON.stringify(cap.ghosts)); cap.ghosts = null; cap.reused = true;
+          enterMarking();
+        };
+        $u('#fx-ghost-no').onclick = () => { cap.ghosts = null; cap.ghostsDismissed = true; enterPlacing(); };
+      } else {
+        status('Line the wheels up with the outline', 'Level and bright, then mark the bike.');
+        actions(`${hasMarks ? '<button class="btn" id="fx-remark">Mark again</button><button class="btn primary" id="fx-ready">Ready to ride</button>' : '<button class="btn primary" id="fx-mark">Mark the bike</button>'}`);
+        const m = $u('#fx-mark'); if (m) m.onclick = () => { cap.marks = {}; enterMarking(); };
+        const rr = $u('#fx-remark'); if (rr) rr.onclick = () => { cap.marks = {}; cap.cal = null; enterMarking(); };
+        const rd = $u('#fx-ready'); if (rd) rd.onclick = onReady;
       }
+      if (first) Sound.say('Line the wheels up with the outline. Level and bright. Then tap Mark the bike.');
+    }
+
+    /* ----- marking ----- */
+    function freeze() {
+      const g = still.getContext('2d'); g.drawImage(video, 0, 0, cap.W, cap.H);
+      cap.frozenLm = cap.lm ? cap.lm.map((p) => p.slice()) : null;
+      cap.frozenRider = cap.rider;
+      still.hidden = false; video.hidden = true;
+    }
+    function enterMarking() {
+      cap.state = 'marking'; cap.ghosts = null; drawSilhouette();
+      freeze();
+      cap.markIdx = MARK_KEYS.findIndex((k) => !cap.marks[k]); if (cap.markIdx < 0) cap.markIdx = MARK_KEYS.length;
+      $u('#fx-result').hidden = true;
+      paintMarkPrompt(); paintMarks();
+      status('', '');
+      if (cap.reused) Sound.say('Now mark the saddle nose and the top of the hood.');
+      else if (cap.markIdx === 0) Sound.say('Tap the centre of the rear wheel. Hold your finger down to see a magnifier.');
+    }
+    function paintMarkPrompt() {
+      const pill = $u('#fx-markpill');
+      if (cap.state !== 'marking') { pill.hidden = true; return; }
+      const cur = TF.BIKE_MARKS[cap.markIdx];
+      pill.hidden = false;
+      // Keep the prompt away from the point being marked: it goes to the side the point is not on.
+      if (cur && ART.pts[cur.key]) {
+        const g = silhouetteGeometry(cap.W, cap.H, cap.flip), p = g.map(ART.pts[cur.key]);
+        pill.classList.toggle('right', p.x / cap.W < 0.5);
+      }
+      pill.innerHTML = cur
+        ? `${riderSVG({ rider: false, highlight: cur.key, label: cur.label })}<div><b>${cap.markIdx + 1} of ${MARK_KEYS.length}: ${esc(cur.label)}</b><span>${esc(cur.help)}</span></div>`
+        : '';
+      const spindleNext = cur && cur.key === 'spindle';
+      actions(`<button class="btn" id="fx-undo">${icon('undo')}Undo</button>${spindleNext ? `<button class="btn" id="fx-refresh">${icon('refresh')}Refresh frame</button>` : ''}<button class="btn quiet" id="fx-back">Back</button>`);
+      $u('#fx-undo').onclick = undoMark;
+      $u('#fx-back').onclick = () => { cap.marks = {}; cap.reused = false; enterPlacing(); };
+      const rf = $u('#fx-refresh'); if (rf) rf.onclick = () => { freeze(); paintMarks(); toast('New frame taken.', 1500); };
+      if (spindleNext && !cap.saidCrank) {
+        cap.saidCrank = true;
+        Sound.say(cap.rider || cap.frozenRider ? 'Ask your rider to set the near crank level, pointing forward, and hold still for a moment. Then tap Refresh frame.' : 'Set the near crank level, pointing forward. Then tap Refresh frame.');
+      }
+    }
+    function paintMarks() {
+      ctx.clearRect(0, 0, ov.width, ov.height);
+      const dpr = window.devicePixelRatio || 1, R = 6 * dpr;
+      for (const k of MARK_KEYS) {
+        const p = cap.marks[k]; if (!p) continue;
+        const q = toCanvas(p);
+        ctx.fillStyle = '#FF6A1A'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * dpr;
+        ctx.beginPath(); ctx.arc(q.x, q.y, R, 0, 7); ctx.fill(); ctx.stroke();
+      }
+      const m = cap.marks;
+      if (m.bb && m.spindle) { const a = toCanvas(m.bb), b = toCanvas(m.spindle); ctx.strokeStyle = 'rgba(32,214,181,.95)'; ctx.lineWidth = 3 * dpr; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+      if (m.rearAxle && m.tyreTop) { const a = toCanvas(m.rearAxle), rr = Math.abs(toCanvas(m.tyreTop).y - a.y); ctx.strokeStyle = 'rgba(32,214,181,.7)'; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.arc(a.x, a.y, rr, 0, 7); ctx.stroke(); }
+    }
+    function undoMark() {
+      const done = MARK_KEYS.filter((k) => cap.marks[k]); if (!done.length) return;
+      delete cap.marks[done[done.length - 1]];
+      cap.markIdx = MARK_KEYS.findIndex((k) => !cap.marks[k]);
+      cap.state = 'marking'; $u('#fx-result').hidden = true; paintMarkPrompt(); paintMarks();
+    }
+    // Pointer: press shows the magnifier, slide, release places the mark.
+    const loupe = $u('.loupe'), lctx = $('canvas', loupe).getContext('2d');
+    const toVideo = (e) => { const b = frame.getBoundingClientRect(); return { x: (e.clientX - b.left) / b.width * cap.W, y: (e.clientY - b.top) / b.height * cap.H, bx: e.clientX - b.left, by: e.clientY - b.top, bw: b.width }; };
+    const showLoupe = (p) => {
+      loupe.hidden = false; const z = 3, sz = 264, src = sz / z * (cap.W / p.bw);
+      lctx.fillStyle = '#000'; lctx.fillRect(0, 0, sz, sz);
+      lctx.drawImage(still, p.x - src / 2, p.y - src / 2, src, src, 0, 0, sz, sz);
+      lctx.strokeStyle = '#FF6A1A'; lctx.lineWidth = 2; lctx.beginPath(); lctx.moveTo(sz / 2 - 18, sz / 2); lctx.lineTo(sz / 2 + 18, sz / 2); lctx.moveTo(sz / 2, sz / 2 - 18); lctx.lineTo(sz / 2, sz / 2 + 18); lctx.stroke();
+      loupe.style.left = `${Math.max(0, Math.min(p.bw - 132, p.bx - 66))}px`; loupe.style.top = `${p.by > 160 ? p.by - 156 : p.by + 28}px`;
+    };
+    let pressing = false;
+    frame.addEventListener('pointerdown', (e) => { if (cap.state !== 'marking' || cap.markIdx >= MARK_KEYS.length) return; pressing = true; frame.setPointerCapture(e.pointerId); showLoupe(toVideo(e)); });
+    frame.addEventListener('pointermove', (e) => { if (pressing) showLoupe(toVideo(e)); });
+    frame.addEventListener('pointerup', (e) => {
+      if (!pressing) return; pressing = false; loupe.hidden = true;
+      const p = toVideo(e);
+      const key = MARK_KEYS[cap.markIdx];
+      cap.marks[key] = { x: p.x, y: p.y };
+      if (key === 'spindle') { cap.spindleLm = cap.frozenLm; cap.spindleRider = !!cap.frozenRider; }
+      cap.markIdx = MARK_KEYS.findIndex((k) => !cap.marks[k]); if (cap.markIdx < 0) cap.markIdx = MARK_KEYS.length;
+      paintMarks();
+      if (cap.markIdx >= MARK_KEYS.length) finishMarks(); else paintMarkPrompt();
+    });
+    frame.addEventListener('pointercancel', () => { pressing = false; loupe.hidden = true; });
+
+    function finishMarks() {
+      cap.state = 'marked'; $u('#fx-markpill').hidden = true;
+      const cal = TF.computeCalibration(cap.marks, r.bike, cap.H, cap.W);
+      cal.markedWithRider = !!(cap.spindleRider || cap.frozenRider);
+      if (cal.markedWithRider && cap.spindleLm) {
+        const side = TF.framingCheck(cap.spindleLm).side, idx = TF.LM[side];
+        const vis = (i) => cap.spindleLm[i][2] >= F.visibilityThreshold;
+        if (vis(idx.heel) && vis(idx.toe)) cal.spindleFoot = { heel: lmPx(cap.spindleLm, idx.heel), toe: lmPx(cap.spindleLm, idx.toe) };
+      }
+      cap.cal = cal; cap.markedWithRider = cal.markedWithRider;
+      const u = Settings.v.units, bm = cal.bikeMeasures, dist = cal.distance;
+      const row = (ok, label, text) => `<div class="rrow ${ok ? 'ok' : 'warn'}"><i></i><b>${esc(label)}</b><span>${esc(text)}</span></div>`;
+      const fixes = cal.warnings.map((w) => w.text);
+      if (dist && dist.distance !== 'good') fixes.unshift(dist.text);
+      if (dist && dist.centre !== 'good') fixes.push(dist.centreText);
+      const card = $u('#fx-result');
+      card.hidden = false;
+      card.innerHTML = `<h3>${cal.ok && (!dist || dist.distance === 'good') ? 'The bike is marked' : 'Check the set-up'}</h3>
+        ${row(cal.agreement <= C.calibration.scaleAgreementMax, 'Scale', `wheel and crank agree within ${(cal.agreement * 100).toFixed(1)}%`)}
+        ${row(cal.squareRatio >= C.calibration.squareRatioMin, 'Square', `rear wheel ${Math.round(cal.squareRatio * 100)}% as wide as tall`)}
+        ${row(Math.abs(cal.tiltDeg) <= 2, 'Level', `bike ${Math.abs(cal.tiltDeg).toFixed(1)}°${Math.abs(cal.tiltDeg) > 0.05 ? (cal.tiltDeg > 0 ? ' front high' : ' front low') : ''}`)}
+        ${dist ? row(dist.distance === 'good', 'Distance', finite(dist.metres) ? `about ${dist.metres.toFixed(1)} m` : dist.distance) : ''}
+        ${bm ? (() => { const L = (v) => esc(U.len(Number.isFinite(v) ? Math.round(v) : v, 'length'));
+          const drop = Number.isFinite(bm.drop) && bm.drop < 0 ? `hoods ${L(-bm.drop)} above the saddle` : `saddle-to-hood drop ${L(bm.drop)}`;
+          return `<p class="bike-nums">Saddle height ${L(bm.saddleHeight)} to the nose · saddle setback ${L(bm.saddleSetback)} · ${drop} · reach to the hoods ${L(bm.reach)}</p>`; })() : ''}
+        ${fixes.length ? `<ul class="fixes">${fixes.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}`;
+      actions(`<button class="btn" id="fx-remark2">Re-mark</button><button class="btn primary" id="fx-ready2">Ready to ride</button>`);
+      $u('#fx-remark2').onclick = () => { cap.marks = {}; cap.cal = null; cap.reused = false; cap.saidCrank = false; enterPlacing(); };
+      $u('#fx-ready2').onclick = onReady;
+      Sound.say(cal.ok && (!dist || dist.distance === 'good') ? 'The bike is marked. Tap Ready to ride.' : `Check the set-up. ${fixes[0] || ''}`);
+    }
+    const finite = (v) => typeof v === 'number' && Number.isFinite(v);
+
+    /* ----- ride ----- */
+    function triggerText() {
+      const v = Settings.v;
+      const start = v.startMode === 'strokes' ? `Start after ${v.startStrokes} steady strokes` : v.startMode === 'beeps' ? `Start after ${v.startBeeps} beeps` : `Start after ${v.startSeconds} s`;
+      const stop = v.stopMode === 'strokes' ? `Record ${v.stopStrokes} strokes` : `Record ${v.stopSeconds} s`;
+      return { start, stop };
+    }
+    function paintTriggers() {
+      const t = triggerText(), box = $u('#fx-trig');
+      box.hidden = false;
+      box.innerHTML = `<button class="pill btn-pill" id="fx-t-start">${esc(t.start)} ▾</button><button class="pill btn-pill" id="fx-t-stop">${esc(t.stop)} ▾</button>`;
+      $u('#fx-t-start').onclick = () => chooseTrigger('start');
+      $u('#fx-t-stop').onclick = () => chooseTrigger('stop');
+    }
+    async function chooseTrigger(which) {
+      const v = Settings.v;
+      const opts = which === 'start'
+        ? [['strokes:10', 'After 10 steady strokes'], ['strokes:6', 'After 6 steady strokes'], ['seconds:15', 'After 15 s'], ['seconds:30', 'After 30 s'], ['beeps:5', 'After 5 beeps']]
+        : [['seconds:20', 'Record 20 s'], ['seconds:30', 'Record 30 s'], ['strokes:15', 'Record 15 strokes'], ['strokes:25', 'Record 25 strokes']];
+      const cur = which === 'start' ? `${v.startMode}:${v.startMode === 'strokes' ? v.startStrokes : v.startMode === 'beeps' ? v.startBeeps : v.startSeconds}` : `${v.stopMode}:${v.stopMode === 'strokes' ? v.stopStrokes : v.stopSeconds}`;
+      const pick = await sheet({ title: which === 'start' ? 'Start recording' : 'Stop recording', body: `<div class="list">${opts.map(([k, l]) => `<button class="list-item" data-k="${k}"><span class="grow">${esc(l)}</span>${k === cur ? icon('check', 'chev') : ''}</button>`).join('')}</div>`,
+        actions: [{ label: 'Close', value: null, kind: 'quiet' }], onOpen: (s, close) => $$('[data-k]', s).forEach((b) => (b.onclick = () => close(b.dataset.k))) });
+      if (!pick) return;
+      const [mode, n] = pick.split(':');
+      if (which === 'start') { Settings.set('startMode', mode); Settings.set(mode === 'strokes' ? 'startStrokes' : mode === 'beeps' ? 'startBeeps' : 'startSeconds', Number(n)); }
+      else { Settings.set('stopMode', mode); Settings.set(mode === 'strokes' ? 'stopStrokes' : 'stopSeconds', Number(n)); }
+      paintTriggers();
+    }
+    function armFade() {
+      clearTimeout(cap.fadeTimer); ui.classList.remove('faded');
+      if (riding()) cap.fadeTimer = setTimeout(() => { if (riding()) ui.classList.add('faded'); }, 3000);
+    }
+    ui.addEventListener('pointerdown', armFade);
+
+    function onReady(second) {
+      cap.state = 'waiting'; $u('#fx-result').hidden = true; still.hidden = true; video.hidden = false; drawSilhouette();
+      cap.sc.reset(); cap.framingOkSince = null; cap.issueSince = null; cap.saidIssue = {}; cap.sayCadence = true; cap.saidSeen = false;
+      paintTriggers(); paintLights();
+      actions(`<button class="btn quiet" id="fx-stop">Stop</button>`);
+      $u('#fx-stop').onclick = () => stopEarly('tap');
+      armFade();
+      const v = Settings.v;
+      const how = v.startMode === 'strokes' ? `I'll start recording after ${v.startStrokes} steady pedal strokes.` : v.startMode === 'beeps' ? `Recording starts after ${v.startBeeps} beeps.` : `Recording starts in ${v.startSeconds} seconds.`;
+      let line;
+      if (second === true) line = `Move your hands to the ${(TF.HAND_POSITIONS[cap.hand] || 'next position').toLowerCase()} and keep pedalling. ${how}`;
+      else if (cap.rider) line = `Start pedalling at a steady effort you could hold for an hour, when you're ready. ${how}`;
+      else line = `Walk to the bike and start pedalling at a steady effort you could hold for an hour. ${how}`;
+      cap.saidSeen = !!cap.rider;
+      status(second === true ? `Hands on the ${(TF.HAND_POSITIONS[cap.hand] || '').toLowerCase()}` : cap.rider ? 'Start pedalling when ready' : 'Get on the bike', how);
+      Sound.say(line);
+      if (v.startMode === 'seconds') countdown(v.startSeconds);
+    }
+    const framingOk = (now) => cap.framingOkSince && now - cap.framingOkSince >= F.stableMs;
+    function sayIssue(now, fc) {
+      // Head cut off, feet cut off or a joint missing for more than 3 s: say it once, with the fix.
+      let key = null, line = null;
+      if (!cap.lm) return;
+      if (fc.feetCut) { key = 'feet'; line = 'Your feet are cut off at the bottom of the frame. The camera needs to be further back or a little higher.'; }
+      else if (fc.missing.length) { key = 'missing:' + fc.missing.join(','); line = `I can't see ${TF.describeMissing(fc.missing)}. Check you're fully in the frame.`; }
+      else if (fc.headCut) { key = 'head'; line = "Your head is cut off at the top. That doesn't affect the measurements, but the camera could go a little further back."; }
+      if (!key) { cap.issueSince = null; return; }
+      if (cap.issueKey !== key) { cap.issueKey = key; cap.issueSince = now; return; }
+      if (now - cap.issueSince > 3000 && !cap.saidIssue[key]) { cap.saidIssue[key] = true; Sound.beep('problem'); Sound.say(line); }
+    }
+    function tick(now, fc, ev) {
+      const cad = cap.sc.cadence(), v = Settings.v;
+      if (cap.state === 'question') return;
+      if (riding() && cap.lm && !cap.saidSeen && cap.rider) { cap.saidSeen = true; Sound.say('I can see you.', { interrupt: false }); }
+      if (riding()) sayIssue(now, fc);
       if (cap.state === 'waiting') {
-        pill.textContent = Number.isFinite(cad) ? `${Math.round(cad)} rpm` : 'Waiting';
-        if (!framingOk(now)) { setStatus('Get on the bike', fc.missing.length && cap.lm ? `Can't see ${TF.describeMissing(fc.missing)}.` : 'Start pedalling steadily when you are on.'); if (cap.framingBadSince && now - cap.framingBadSince > 4000) hint(now, fc); return; }
-        if (V.startMode === 'seconds') return; // the countdown runs on its own timer
-        if (V.startMode === 'beeps') { if (cap.sc.count >= 3) beginBeeps(); else setStatus('Start pedalling', 'The beeps begin once you are pedalling.'); return; }
-        // strokes
-        if (!cap.sc.stable()) { setStatus('Pedal steadily', Number.isFinite(cad) ? `Cadence ${Math.round(cad)} rpm. Waiting for it to settle.` : 'Start pedalling at a steady, moderate effort.'); return; }
-        if (now > cap.sayCadenceAt) {
-          cap.sayCadenceAt = Infinity;
+        $u('#fx-small').textContent = Number.isFinite(cad) ? `${Math.round(cad)} rpm` : triggerText().start;
+        if (!framingOk(now)) return;
+        if (v.startMode === 'seconds') return;
+        if (v.startMode === 'beeps') { if (cap.sc.count >= 3) beginBeeps(); return; }
+        if (!cap.sc.stable()) { status('Pedal steadily', Number.isFinite(cad) ? `Cadence ${Math.round(cad)} rpm, settling` : 'Steady, moderate effort'); return; }
+        if (cap.sayCadence) {
+          cap.sayCadence = false;
           const advice = cad < T.cadenceLow ? ` That's a little slow; aim for about ${T.cadenceLow + 10}.` : cad > T.cadenceHigh ? ` That's quick; ease to about ${T.cadenceHigh - 10}.` : '';
-          Sound.say(`Cadence ${Math.round(cad)}.${advice} Counting ${V.startStrokes} strokes.`);
+          Sound.say(`Cadence ${Math.round(cad)}.${advice} Counting ${v.startStrokes} strokes.`);
         }
         cap.state = 'counting'; cap.countStrokes = 0;
         return;
       }
       if (cap.state === 'counting') {
-        if (!fc.ok && cap.framingBadSince && now - cap.framingBadSince > 1500) { cap.state = 'waiting'; cap.sayCadenceAt = 0; Sound.beep('problem'); hint(0, fc); return; }
+        if (!fc.ok && cap.framingBadSince && now - cap.framingBadSince > 1500) { cap.state = 'waiting'; bigcount.hidden = true; return; }
         if (ev) { cap.countStrokes++; Sound.beep('tick'); }
-        const left = V.startStrokes - cap.countStrokes;
+        const left = v.startStrokes - cap.countStrokes;
         bigcount.hidden = false; bigcount.textContent = String(Math.max(0, left));
-        setStatus('Keep pedalling', `Recording in ${plural(Math.max(0, left), 'stroke')}.`);
-        pill.textContent = `${Math.round(cad)} rpm`;
+        status('Keep pedalling', `Recording in ${plural(Math.max(0, left), 'stroke')} · ${Math.round(cad)} rpm`);
         if (left <= 0) startRecording();
         return;
       }
       if (cap.state === 'recording') {
-        const el2 = (now - cap.recStart) / 1000;
-        pill.innerHTML = `<span class="dot"></span> REC ${Math.floor(el2)} s`;
-        pill.classList.add('rec');
-        const goal = V.stopMode === 'strokes' ? `${cap.recStrokes} of ${V.stopStrokes} strokes` : `${Math.max(0, Math.ceil(V.stopSeconds - el2))} s left`;
-        setStatus('Recording', `${goal} · ${Number.isFinite(cad) ? Math.round(cad) + ' rpm' : ''}`);
-        const done = V.stopMode === 'strokes' ? cap.recStrokes >= V.stopStrokes : el2 >= V.stopSeconds;
-        if (done || el2 >= C.capture.maxClipSeconds) stopRecording();
+        const e = (now - cap.recStart) / 1000;
+        const goal = v.stopMode === 'strokes' ? `${cap.recStrokes} of ${v.stopStrokes} strokes` : `${Math.max(0, Math.ceil(v.stopSeconds - e))} s left`;
+        status('Recording', `${goal}${Number.isFinite(cad) ? ` · ${Math.round(cad)} rpm` : ''}`);
+        const rec = $u('#fx-rec'); if (rec) rec.innerHTML = `<span class="dot"></span>REC ${Math.floor(e)} s`;
+        const done = v.stopMode === 'strokes' ? cap.recStrokes >= v.stopStrokes : e >= v.stopSeconds;
+        if (done || e >= C.capture.maxClipSeconds) stopRecording();
       }
-    }
-
-    async function onStart() {
-      Sound.unlock();
-      $('#cstart', ui).hidden = true;
-      // Motion sensor for the level reading (iOS asks permission inside a tap).
-      try {
-        if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') await DeviceOrientationEvent.requestPermission();
-      } catch { /* declined */ }
-      window.addEventListener('deviceorientation', onOrient);
-      try { cap.wakeLock = await navigator.wakeLock.request('screen'); } catch { /* not supported */ }
-      cap.state = 'waiting'; cap.sc.reset(); cap.framingOkSince = null;
-      if (V.startMode === 'seconds') {
-        Sound.say(`Recording starts in ${V.startSeconds} seconds. Get on the bike and start pedalling at a steady, moderate effort.`);
-        countdown(V.startSeconds);
-      } else if (V.startMode === 'beeps') {
-        Sound.say(`Get on the bike and start pedalling at a steady, moderate effort. Recording starts after ${V.startBeeps} beeps.`);
-      } else {
-        Sound.say(`Get on the bike and start pedalling at a steady, moderate effort. I'll start recording after ${V.startStrokes} steady pedal strokes.`);
-      }
-    }
-    function onOrient(e) {
-      const lv = levelFromOrientation(e, V.cameraFacing !== 'user');
-      if (!lv) return;
-      cap.level = lv;
-      const lp = $('#clevel', ui); lp.hidden = false;
-      const ok = Math.abs(lv.pitch) <= 3 && Math.abs(lv.roll) <= 3;
-      lp.textContent = ok ? 'Level ✓' : Math.abs(lv.pitch) > Math.abs(lv.roll) ? `Tilted ${Math.round(Math.abs(lv.pitch))}° ${lv.pitch > 0 ? 'up' : 'down'}` : `Rotated ${Math.round(Math.abs(lv.roll))}°`;
     }
     function countdown(n) {
       bigcount.hidden = false;
@@ -3850,262 +4276,189 @@ function runCapture(d) {
         if (cap.closed || cap.state !== 'waiting') return;
         bigcount.textContent = String(k);
         if (k <= 3 && k > 0) Sound.beep('count');
-        if (k === 10 && n > 10) Sound.say('Ten seconds.', { interrupt: false });
         if (k <= 0) {
-          if (framingOk(performance.now())) startRecording();
-          else { setStatus('Waiting for a clear view', 'Recording starts as soon as I can see you clearly.'); const wait = () => { if (cap.closed || cap.state !== 'waiting') return; if (framingOk(performance.now())) startRecording(); else later(wait, 250); }; wait(); }
-          return;
+          const wait = () => { if (cap.closed || cap.state !== 'waiting') return; if (framingOk(performance.now())) startRecording(); else { status('Waiting for a clear view', 'Recording starts as soon as I can see you clearly.'); later(wait, 250); } };
+          wait(); return;
         }
-        setStatus('Get on the bike', `Recording in ${k} s. Pedal at a steady, moderate effort.`);
+        status(cap.rider ? 'Pedal steadily' : 'Get on the bike', `Recording in ${k} s`);
         later(() => step(k - 1), 1000);
       };
       step(n);
     }
     function beginBeeps() {
-      cap.state = 'beeping';
-      let k = V.startBeeps;
-      bigcount.hidden = false;
+      cap.state = 'beeping'; let k = Settings.v.startBeeps; bigcount.hidden = false;
       const step = () => {
         if (cap.closed || cap.state !== 'beeping') return;
         if (k <= 0) { startRecording(); return; }
-        bigcount.textContent = String(k); Sound.beep('count'); setStatus('Keep pedalling', `Recording after ${plural(k, 'beep')}.`);
+        bigcount.textContent = String(k); Sound.beep('count'); status('Keep pedalling', `Recording after ${plural(k, 'beep')}`);
         k--; later(step, C.triggers.beepIntervalMs);
       };
       step();
     }
-
     function startRecording() {
-      bigcount.hidden = true;
-      cap.chunks = []; cap.recFrames = []; cap.recStrokes = 0;
+      bigcount.hidden = true; cap.chunks = []; cap.recFrames = []; cap.recStrokes = 0;
       const mime = C.capture.mimeTypes.find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) || '';
       try { cap.recorder = new MediaRecorder(cap.stream, mime ? { mimeType: mime, videoBitsPerSecond: C.capture.videoBitsPerSecond } : undefined); }
-      catch (e) { setStatus('Recording is not supported here', e.message); return; }
+      catch (e) { status('Recording is not supported here', e.message); return; }
       cap.mime = cap.recorder.mimeType || mime || 'video/webm';
       cap.recorder.ondataavailable = (e) => { if (e.data && e.data.size) cap.chunks.push(e.data); };
       cap.recorder.start(1000);
-      cap.recStart = performance.now();
-      cap.state = 'recording';
-      Sound.beep('start');
-      Sound.say('Recording. Keep pedalling steadily.');
+      cap.recStart = performance.now(); cap.state = 'recording';
+      $u('#fx-trig').hidden = true;
+      if (!$u('#fx-rec')) $u('.corner.tl').insertAdjacentHTML('beforeend', '<span class="pill rec" id="fx-rec"><span class="dot"></span>REC</span>');
+      Sound.beep('start'); Sound.say('Recording. Keep pedalling steadily.');
     }
-    function stopRecording() {
-      cap.state = 'checking';
-      pill.classList.remove('rec'); pill.textContent = 'Checking';
-      Sound.beep('stop');
+    function removeRec() { const x = $u('#fx-rec'); if (x) x.remove(); }
+    function stopRecording(discard) {
       const durationS = (performance.now() - cap.recStart) / 1000;
+      removeRec();
+      if (discard) { try { cap.recorder.onstop = null; cap.recorder.stop(); } catch { /* ignore */ } return; }
+      cap.state = 'checking'; Sound.beep('stop');
+      status('Done', 'Checking the recording…');
+      Sound.say('Done. Checking.');
       cap.recorder.onstop = () => afterRecording(durationS);
       try { cap.recorder.stop(); } catch { afterRecording(durationS); }
     }
-    function afterRecording(durationS) {
+    async function afterRecording(durationS) {
       const blob = new Blob(cap.chunks, { type: cap.mime });
       const q = TF.captureQuality(cap.recFrames, cap.recStrokes);
-      const W = video.videoWidth, H = video.videoHeight;
       if (q.ok) {
-        setStatus('Good capture', `${plural(cap.recStrokes, 'pedal stroke')} recorded. You can stop pedalling and get off the bike.`);
-        Sound.say('Good capture. You can stop pedalling and get off the bike.');
         const s = cap.stream.getVideoTracks()[0].getSettings();
-        cap.result = { ok: true, blob, mime: cap.mime, width: W, height: H, fps: s.frameRate || 30, durationS, live: { frames: cap.recFrames, strokes: cap.recStrokes, cadence: cap.sc.cadence(), fps: cap.liveFps }, calT: TF.pickCalibrationTime(cap.recFrames, W, H), level: cap.level, captureSettings: { startMode: V.startMode, stopMode: V.stopMode } };
-        $('#ccont', ui).hidden = false;
-        later(() => finish(cap.result), 5000);
+        cap.clips.push({ blob, mime: cap.mime, width: cap.W, height: cap.H, fps: s.frameRate || 30, durationS, hand: cap.hand,
+          live: { strokes: cap.recStrokes, cadence: cap.sc.cadence() }, captureSettings: { startMode: Settings.v.startMode, stopMode: Settings.v.stopMode }, level: cap.level, warnings: q.warnings || [] });
+        const next = cap.clips.length === 1 ? otherHand() : null;
+        if (next) {
+          const a = await ask({ kind: 'second', text: `Good capture. Record the ${TF.HAND_POSITIONS[next].toLowerCase()} too?`,
+            speech: `Good capture. Want to record a second hand position, the ${TF.HAND_POSITIONS[next].toLowerCase()}? ${replyHint('yes', 'no')}`,
+            yesLabel: `Record ${TF.HAND_POSITIONS[next].toLowerCase()}`, noLabel: 'Done', yesSay: `Recording the ${TF.HAND_POSITIONS[next].toLowerCase()} next.`, noSay: 'Done. You can get off the bike.', timeout: 'no' });
+          if (a === 'yes') { cap.hand = next; onReady(true); return; }
+        } else {
+          Sound.say('Good capture. You can get off.');
+        }
+        status('Good capture', 'You can get off the bike.');
+        finish(true);
         return;
       }
       Sound.beep('problem');
       cap.tries++;
-      if (cap.tries <= C.capture.autoRetries) {
-        const n = C.capture.retryCountdownSeconds;
-        setStatus("Let's go again", `${q.text || q.speech} Keep pedalling; recording again in ${n} s.`);
-        Sound.say(`${q.speech} Let's go again. Keep pedalling. Recording again in ${n} seconds.`);
-        cap.state = 'waiting'; cap.framingOkSince = performance.now() - F.stableMs; countdown(n);
-      } else {
-        setStatus('That recording was not usable', `${q.text || q.speech} Check the set-up, then tap Try again.`);
-        Sound.say(`${q.speech} Tap Try again when you're ready.`);
-        $('#cretry', ui).hidden = false; cap.state = 'preview';
-      }
+      const auto = cap.tries <= C.capture.autoRetries;
+      const a = await ask({ kind: 'retry', text: q.text || q.speech, speech: `${q.speech} ${replyHint('again', 'done')}${auto ? ' If you do nothing, I will go again.' : ''}`,
+        yesLabel: 'Go again', noLabel: 'Stop and check the set-up', yesSay: 'Going again.', noSay: 'Stopping. Check the set-up.', timeout: auto ? 'yes' : 'no' });
+      if (a === 'yes') onReady(cap.clips.length > 0);
+      else { cap.tries = 0; enterPlacing(); }
+    }
+    function replyHint(yesWord, noWord) {
+      const voice = Settings.v.voiceReplies && Listener.available();
+      return `Raise your right hand${voice ? `, or say ${yesWord},` : ''} for yes. Left hand${voice ? `, or say ${noWord},` : ''} for no.`;
     }
 
+    /* ----- questions: gesture, voice or tap ----- */
+    function ask(q) {
+      return new Promise((resolveQ) => {
+        const prevState = cap.state;
+        cap.state = 'question'; cap.question = q; ui.classList.remove('faded');
+        const box = $u('#fx-q');
+        box.hidden = false;
+        box.innerHTML = `<p>${esc(q.text)}</p><div class="qrow"><button class="btn lg" id="fx-q-no">${esc(q.noLabel)}</button><button class="btn primary lg" id="fx-q-yes">${esc(q.yesLabel)}</button></div>
+          <p class="qhint">${Listener.available() && Settings.v.voiceReplies ? 'Raise your right hand or say “yes” · left hand or “no”' : 'Raise your right hand for yes · left hand for no'}</p>`;
+        let done = false;
+        const answer = (val, via) => {
+          if (done) return; done = true;
+          Listener.stop(); clearTimeout(to);
+          box.hidden = true; cap.question = null; cap.state = prevState === 'question' ? 'checking' : prevState;
+          cap.replies.push({ q: q.kind, answer: val, via, at: new Date().toISOString() });
+          if (via !== 'tap') Sound.say(`${via === 'gesture' ? (val === 'yes' ? 'Right hand' : 'Left hand') : via === 'voice' ? 'Got it' : "No answer"}: ${val === 'yes' ? q.yesSay : q.noSay}`);
+          else Sound.say(val === 'yes' ? q.yesSay : q.noSay);
+          resolveQ(val);
+        };
+        cap.answer = answer;
+        $u('#fx-q-yes').onclick = () => answer('yes', 'tap');
+        $u('#fx-q-no').onclick = () => answer('no', 'tap');
+        Sound.say(q.speech).then(() => {
+          if (done) return;
+          Listener.start(['yes', 'again', 'no', 'done', 'stop'], (w) => answer(['yes', 'again'].includes(w) ? 'yes' : 'no', 'voice'));
+        });
+        const to = setTimeout(() => answer(q.timeout || 'no', 'auto'), 20000);
+        cap.timers.push(to);
+      });
+    }
+    function gestures(lm, now) {
+      if (!lm) { cap.gestureSince.right = cap.gestureSince.left = null; return; }
+      const noseY = lm[TF.LM.nose][1];
+      const up = (i) => lm[i][2] >= 0.5 && lm[i][1] < noseY;
+      for (const [side, idx] of [['right', TF.LM.right.wrist], ['left', TF.LM.left.wrist]]) {
+        if (up(idx)) { cap.gestureSince[side] = cap.gestureSince[side] || now; } else cap.gestureSince[side] = null;
+      }
+      const held = (side) => cap.gestureSince[side] && now - cap.gestureSince[side] >= 1500;
+      if (cap.state === 'question' && cap.answer) {
+        if (held('right')) { cap.gestureSince.right = null; cap.answer('yes', 'gesture'); }
+        else if (held('left')) { cap.gestureSince.left = null; cap.answer('no', 'gesture'); }
+        return;
+      }
+      if (riding() && held('left')) { cap.gestureSince.left = null; stopEarly('gesture'); }
+    }
+    async function stopEarly(via) {
+      const wasRecording = cap.state === 'recording';
+      if (wasRecording) stopRecording(true);
+      bigcount.hidden = true;
+      const a = await ask({ kind: 'stop', text: 'Stop for now?', speech: `Stop for now? ${replyHint('again', 'stop')}`.replace('for yes', 'to keep going').replace('for no', 'to stop'),
+        yesLabel: 'Keep going', noLabel: 'Stop', yesSay: 'Keeping going.', noSay: 'Stopped.', timeout: 'yes' });
+      void via;
+      if (a === 'yes') onReady(cap.clips.length > 0);
+      else enterPlacing();
+    }
+
+    /* ----- finish ----- */
     function cleanup() {
       cap.closed = true;
-      cancelAnimationFrame(cap.raf);
+      cancelAnimationFrame(cap.raf); clearTimeout(cap.fadeTimer);
       cap.timers.forEach(clearTimeout);
-      window.removeEventListener('deviceorientation', onOrient);
-      try { if (cap.recorder && cap.recorder.state === 'recording') cap.recorder.stop(); } catch { /* ignore */ }
+      window.removeEventListener('deviceorientation', onOrient); window.removeEventListener('resize', layout);
+      Listener.stop();
+      try { if (cap.recorder && cap.recorder.state === 'recording') { cap.recorder.onstop = null; cap.recorder.stop(); } } catch { /* ignore */ }
       if (cap.stream) cap.stream.getTracks().forEach((t) => t.stop());
       if (cap.det) cap.det.close();
       if (cap.wakeLock) cap.wakeLock.release().catch(() => {});
-      Sound.stop();
       ui.remove(); document.body.style.overflow = '';
     }
     let finished = false;
-    function finish(v) { if (finished) return; finished = true; cleanup(); resolve(v); }
+    function finish(ok) {
+      if (finished) return; finished = true;
+      const out = ok && cap.clips.length ? { clips: cap.clips, cal: cap.cal, marks: cap.marks, markedWithRider: cap.markedWithRider, replies: cap.replies } : null;
+      later(() => { cleanup(); resolve(out); }, ok ? 1800 : 0);
+    }
 
-    $('#cstart', ui).onclick = onStart;
-    $('#ccont', ui).onclick = () => finish(cap.result);
-    $('#cretry', ui).onclick = () => { $('#cretry', ui).hidden = true; cap.tries = 0; onStart(); };
-    $('#cx', ui).onclick = async () => {
+    $u('#fx-close').onclick = async () => {
       if (cap.state === 'recording' || cap.state === 'counting' || cap.state === 'beeping') { if (!(await confirmDanger('Stop recording?', 'The recording in progress will be discarded.', 'Stop'))) return; }
-      finish(null);
+      if (cap.clips.length) { finish(true); return; }
+      Sound.stop(); finished = true; cleanup(); resolve(null);
     };
-    $('#cflip', ui).onclick = async () => {
+    $u('#fx-flip').onclick = () => { cap.flip = !cap.flip; Settings.set('silhouetteFlip', cap.flip); drawSilhouette(); };
+    $u('#fx-sound').onclick = () => { Sound.unlock(); $u('#fx-sound').hidden = true; Sound.say('Sound is on.'); };
+    $u('#fx-torch').onclick = async () => {
+      const track = cap.stream && cap.stream.getVideoTracks()[0]; if (!track) return;
+      cap.torch = !cap.torch;
+      try { await track.applyConstraints({ advanced: [{ torch: cap.torch }] }); } catch { toast('This camera’s light could not be switched.'); }
+    };
+    $u('#fx-cam').onclick = async () => {
       const devs = (await navigator.mediaDevices.enumerateDevices()).filter((x) => x.kind === 'videoinput');
-      if (devs.length < 2) { toast('Only one camera found.'); return; }
       const cur = cap.stream && cap.stream.getVideoTracks()[0].getSettings().deviceId;
-      const i = devs.findIndex((x) => x.deviceId === cur);
-      const next = devs[(i + 1) % devs.length];
-      Settings.set('cameraId', next.deviceId);
-      Settings.set('cameraFacing', /front|user|facetime/i.test(next.label) ? 'user' : 'environment');
-      cap.side = null; cap.sc.reset();
-      await openCamera();
+      const pick = await sheet({ title: 'Camera', body: `<div class="list">${devs.map((x, i) => `<button class="list-item" data-id="${esc(x.deviceId)}"><span class="grow">${esc(x.label || `Camera ${i + 1}`)}</span>${x.deviceId === cur ? icon('check', 'chev') : ''}</button>`).join('')}</div>`,
+        actions: [{ label: 'Close', value: null, kind: 'quiet' }], onOpen: (s, close) => $$('[data-id]', s).forEach((b) => (b.onclick = () => close(b.dataset.id))) });
+      if (!pick) return;
+      const dev = devs.find((x) => x.deviceId === pick);
+      Settings.set('cameraId', pick); Settings.set('cameraFacing', /front|user|facetime/i.test(dev ? dev.label : '') ? 'user' : 'environment');
+      cap.marks = {}; cap.cal = null; cap.side = null; cap.sc.reset();
+      await openCamera(); enterPlacing();
     };
-    setCleanup(() => finish(null));
+    setCleanup(() => { if (!finished) { finished = true; cleanup(); resolve(null); } });
+    // Test hook: automated browser tests read the state.
+    window.__TF_CAPTURE = cap;
     init();
   });
 }
 
-/* ---------- 4. calibrate ---------- */
-const TAPS = [
-  { key: 'rearAxle', label: 'Rear axle', help: 'The centre of the rear wheel.' },
-  { key: 'tyreTop', label: 'Top of the rear tyre', help: 'The highest point of the rear tyre, directly above the axle.' },
-  { key: 'tyreBack', label: 'Back of the rear tyre', help: 'The rearmost point of the rear tyre, level with the axle.' },
-  { key: 'frontAxle', label: 'Front axle', help: 'The centre of the front wheel.' },
-  { key: 'bb', label: 'Bottom bracket', help: 'The centre of the crank, where the crank arms meet the frame.' },
-  { key: 'spindle', label: 'Pedal spindle', help: 'The centre of the pedal on the near side. The crank should be level and pointing forward; use ◀ ▶ to find that frame.' },
-];
-
-function lastCalibration(r) {
-  const cutoff = Date.now() - C.calibration.reuseMaxHours * 3600e3;
-  const s = r.sessions.slice().reverse().find((x) => Date.parse(x.created) > cutoff && x.clips[0] && x.clips[0].calibration && x.clips[0].calibration.taps && !x.sample);
-  return s ? { session: s, cal: s.clips[0].calibration } : null;
-}
-
-async function renderCalibrate(main, r, d) {
-  const cap = d.capture;
-  main.innerHTML = `${wizardHead(3, 'Mark the bike', 'Pose tracking finds you, not the bike. Six taps let the app measure in millimetres and follow the pedal.')}
-    <div class="calib">
-      <div id="cal-reuse"></div>
-      <div class="panel tight tap-prompt" id="cal-prompt"></div>
-      <div class="tap-steps" id="cal-steps"></div>
-      <div class="calib-stage" id="cal-stage"><canvas id="cal-canvas"></canvas></div>
-      <div class="row wrap between">
-        <div class="row"><button class="btn sm" id="cal-prev" title="Previous frame">◀ Frame</button><button class="btn sm" id="cal-next" title="Next frame">Frame ▶</button><span class="small faint" id="cal-t"></span></div>
-        <div class="row"><button class="btn sm" id="cal-undo">${icon('undo')}Undo</button><button class="btn sm quiet" id="cal-skip">Skip taps</button></div>
-      </div>
-      <div id="cal-result"></div>
-    </div>`;
-  const stage = $('#cal-stage', main), canvas = $('#cal-canvas', main), ctx = canvas.getContext('2d');
-  const video = document.createElement('video'); video.muted = true; video.playsInline = true; video.preload = 'auto';
-  const url = URL.createObjectURL(cap.blob); video.src = url;
-  setCleanup(() => URL.revokeObjectURL(url));
-  await new Promise((res) => { video.onloadeddata = res; video.onerror = res; setTimeout(res, 6000); });
-  if (!Number.isFinite(video.duration)) { video.currentTime = 1e9; await new Promise((res) => { video.onseeked = res; setTimeout(res, 1500); }); }
-  const W = video.videoWidth || cap.width, H = video.videoHeight || cap.height;
-  canvas.width = W; canvas.height = H;
-  const st = { taps: {}, i: 0, t: cap.calT, frame: null };
-  const dt = 1 / Math.max(24, Math.round(cap.fps || 30));
-  async function showFrame(t) {
-    st.t = Math.max(0, Math.min((Number.isFinite(video.duration) ? video.duration : cap.durationS) - 0.01, t));
-    await new Promise((res) => { video.onseeked = res; video.currentTime = st.t; setTimeout(res, 2500); });
-    const tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H; tmp.getContext('2d').drawImage(video, 0, 0, W, H);
-    st.frame = tmp;
-    $('#cal-t', main).textContent = `${st.t.toFixed(2)} s`; $('#cal-t', main).dataset.t = String(st.t);
-    paint();
-  }
-  function paint(cursor) {
-    ctx.drawImage(st.frame, 0, 0);
-    const R = Math.max(5, W / 160);
-    if (st.ghost) for (const [k, p] of Object.entries(st.ghost)) { ctx.strokeStyle = '#20D6B5'; ctx.lineWidth = R / 2; ctx.beginPath(); ctx.arc(p.x, p.y, R * 1.6, 0, 7); ctx.stroke(); }
-    for (const tp of TAPS) {
-      const p = st.taps[tp.key]; if (!p) continue;
-      ctx.fillStyle = '#FF6A1A'; ctx.strokeStyle = '#fff'; ctx.lineWidth = R / 2.5;
-      ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, 7); ctx.fill(); ctx.stroke();
-    }
-    if (st.taps.bb && st.taps.spindle) { ctx.strokeStyle = 'rgba(32,214,181,.9)'; ctx.lineWidth = R / 2; ctx.beginPath(); ctx.moveTo(st.taps.bb.x, st.taps.bb.y); ctx.lineTo(st.taps.spindle.x, st.taps.spindle.y); ctx.stroke(); }
-    if (cursor) { ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1.5, W / 900); ctx.beginPath(); ctx.moveTo(cursor.x - R * 3, cursor.y); ctx.lineTo(cursor.x + R * 3, cursor.y); ctx.moveTo(cursor.x, cursor.y - R * 3); ctx.lineTo(cursor.x, cursor.y + R * 3); ctx.stroke(); }
-  }
-  function paintPrompt() {
-    const cur = TAPS[st.i];
-    $('#cal-steps', main).innerHTML = TAPS.map((t, i) => `<span class="${st.taps[t.key] ? 'done' : i === st.i ? 'cur' : ''}">${i + 1}. ${esc(t.label)}</span>`).join('');
-    $('#cal-prompt', main).innerHTML = cur
-      ? `${riderSVG({ rider: false, highlight: cur.key, label: cur.label })}<div><b>Tap ${st.i + 1} of ${TAPS.length}: ${esc(cur.label)}</b><div class="small muted">${esc(cur.help)} Hold to magnify, slide, release.</div></div>`
-      : `<div></div><div><b>All six points marked.</b><div class="small muted">Check the result below.</div></div>`;
-  }
-  // Pointer: press shows a loupe; release places the point.
-  const loupe = el('<div class="loupe" hidden><canvas width="264" height="264"></canvas></div>'); stage.appendChild(loupe);
-  const lctx = $('canvas', loupe).getContext('2d');
-  const toImg = (e) => { const b = canvas.getBoundingClientRect(); return { x: (e.clientX - b.left) / b.width * W, y: (e.clientY - b.top) / b.height * H, bx: e.clientX - b.left, by: e.clientY - b.top }; };
-  const showLoupe = (p) => {
-    loupe.hidden = false; const z = 3, sz = 264, src = sz / z * (W / canvas.getBoundingClientRect().width);
-    lctx.clearRect(0, 0, sz, sz); lctx.drawImage(canvas, p.x - src / 2, p.y - src / 2, src, src, 0, 0, sz, sz);
-    lctx.strokeStyle = '#FF6A1A'; lctx.lineWidth = 2; lctx.beginPath(); lctx.moveTo(sz / 2 - 18, sz / 2); lctx.lineTo(sz / 2 + 18, sz / 2); lctx.moveTo(sz / 2, sz / 2 - 18); lctx.lineTo(sz / 2, sz / 2 + 18); lctx.stroke();
-    const above = p.by > 150; loupe.style.left = `${Math.max(0, p.bx - 66)}px`; loupe.style.top = `${above ? p.by - 150 : p.by + 24}px`;
-  };
-  let pressing = false;
-  canvas.addEventListener('pointerdown', (e) => { if (st.i >= TAPS.length) return; pressing = true; canvas.setPointerCapture(e.pointerId); const p = toImg(e); paint(p); showLoupe(p); });
-  canvas.addEventListener('pointermove', (e) => { if (!pressing) return; const p = toImg(e); paint(p); showLoupe(p); });
-  canvas.addEventListener('pointerup', (e) => {
-    if (!pressing) return; pressing = false; loupe.hidden = true;
-    const p = toImg(e);
-    const k = TAPS[st.i].key;
-    st.taps[k] = { x: p.x, y: p.y };
-    if (k === 'spindle') st.spindleT = st.t;
-    st.i = TAPS.findIndex((t) => !st.taps[t.key]); if (st.i < 0) st.i = TAPS.length;
-    paint(); paintPrompt();
-    if (st.i >= TAPS.length) finishTaps();
-  });
-  canvas.addEventListener('pointercancel', () => { pressing = false; loupe.hidden = true; paint(); });
-  $('#cal-prev', main).onclick = () => showFrame(st.t - dt);
-  $('#cal-next', main).onclick = () => showFrame(st.t + dt);
-  $('#cal-undo', main).onclick = () => {
-    const done = TAPS.filter((t) => st.taps[t.key]); if (!done.length) return;
-    delete st.taps[done[done.length - 1].key]; st.i = TAPS.findIndex((t) => !st.taps[t.key]); $('#cal-result', main).innerHTML = ''; paint(); paintPrompt();
-  };
-  $('#cal-skip', main).onclick = async () => {
-    if (!(await sheet({ title: 'Skip the taps?', body: '<p class="muted">Without them the angles are still measured, but there is no knee-over-pedal measurement and suggestions come without amounts in millimetres.</p>', actions: [{ label: 'Go back and tap', value: false, kind: 'quiet' }, { label: 'Skip', value: true }] }))) return;
-    d.calibration = null; d.step = 'analyse'; d.rerender();
-  };
-
-  function finishTaps(reused) {
-    const cal = TF.computeCalibration(st.taps, r.bike, H);
-    cal.calT = st.spindleT ?? st.t;
-    if (reused && reused.footSpindle) cal.footSpindle = reused.footSpindle;
-    const u = Settings.v.units;
-    const okc = (b) => (b ? `<span class="status-good">${icon('check').replace('<svg', '<svg width="14" height="14" style="vertical-align:-2px"')}</span>` : `<span class="status-warn">${icon('alert').replace('<svg', '<svg width="14" height="14" style="vertical-align:-2px"')}</span>`);
-    $('#cal-result', main).innerHTML = `<div class="panel ${cal.ok ? '' : 'warn'} stack">
-      <h2>${cal.ok ? 'Calibration looks good' : 'Check the camera set-up'}</h2>
-      <dl class="kv">
-        <dt>Scale</dt><dd>${okc(cal.agreement <= C.calibration.scaleAgreementMax)} Crank and wheel agree within ${(cal.agreement * 100).toFixed(1)}% (${(cal.pxPerMm).toFixed(3)} px per mm)</dd>
-        <dt>Camera square</dt><dd>${okc(cal.squareRatio >= C.calibration.squareRatioMin)} Rear wheel ${Math.round(cal.squareRatio * 100)}% as wide as tall</dd>
-        <dt>Camera height</dt><dd>${okc(cal.bbHeightFrac >= C.calibration.bbBandTop && cal.bbHeightFrac <= C.calibration.bbBandBottom)} Bottom bracket ${Math.round(cal.bbHeightFrac * 100)}% down the frame</dd>
-        <dt>Bike level</dt><dd>${okc(Math.abs(cal.tiltDeg) <= 2)} ${Math.abs(cal.tiltDeg).toFixed(1)}° ${cal.tiltDeg > 0.05 ? 'front high' : cal.tiltDeg < -0.05 ? 'front low' : ''}</dd>
-        ${cap.level ? `<dt>Phone level</dt><dd>${okc(Math.abs(cap.level.pitch) <= 3)} ${Math.abs(cap.level.pitch).toFixed(1)}° ${cap.level.pitch >= 0 ? 'up' : 'down'}</dd>` : ''}
-      </dl>
-      ${cal.warnings.map((w) => `<div class="banner warn">${icon('alert')}<div class="grow">${esc(w.text)}</div></div>`).join('')}
-      <div class="btn-row"><button class="btn primary" id="cal-go">${cal.ok ? 'Analyse the recording' : 'Analyse anyway'} ${icon('chevR')}</button>
-        <button class="btn" id="cal-redo">Redo taps</button>${!cal.ok ? `<button class="btn quiet" id="cal-rerecord">Fix the camera and record again</button>` : ''}</div>
-    </div>`;
-    $('#cal-go', main).onclick = () => { d.calibration = cal; d.step = 'analyse'; d.rerender(); };
-    $('#cal-redo', main).onclick = () => { st.taps = {}; st.i = 0; st.ghost = null; $('#cal-result', main).innerHTML = ''; paint(); paintPrompt(); };
-    const rr = $('#cal-rerecord', main); if (rr) rr.onclick = () => { d.step = 'setup'; d.rerender(); };
-    $('#cal-result', main).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-
-  await showFrame(cap.calT);
-  paintPrompt();
-  // Offer the last calibration when the camera may not have moved (retests).
-  const last = lastCalibration(r);
-  if (last && last.cal.taps && last.cal.footSpindle) {
-    st.ghost = Object.fromEntries(Object.entries(last.cal.taps).filter(([k]) => k !== 'spindle'));
-    paint();
-    $('#cal-reuse', main).innerHTML = `<div class="banner info">${icon('info')}<div class="grow"><b>Camera not moved since ${esc(fmtDateTime(last.session.created))}?</b> The teal rings show that session's points. If they sit on the axles, tyre and bottom bracket, reuse them.</div>
-      <div class="row"><button class="btn sm primary" id="cal-use">They line up</button><button class="btn sm quiet" id="cal-no">Tap again</button></div></div>`;
-    $('#cal-use', main).onclick = () => {
-      st.taps = JSON.parse(JSON.stringify(last.cal.taps)); st.spindleT = st.t; st.i = TAPS.length; st.ghost = null; $('#cal-reuse', main).innerHTML = '';
-      paint(); paintPrompt(); finishTaps(last.cal);
-    };
-    $('#cal-no', main).onclick = () => { st.ghost = null; $('#cal-reuse', main).innerHTML = ''; paint(); };
-  }
-}
-
-/* ---------- 5. analyse and save ---------- */
+/* ---------- analyse and save ---------- */
 async function analyseVideo(blob, mime, fpsWanted, onProgress, isCancelled) {
   const video = document.createElement('video'); video.muted = true; video.playsInline = true; video.preload = 'auto';
   const url = URL.createObjectURL(blob); video.src = url;
@@ -4140,44 +4493,54 @@ async function analyseVideo(blob, mime, fpsWanted, onProgress, isCancelled) {
 }
 
 async function renderAnalyse(main, r, d) {
-  const cap = d.capture;
-  main.innerHTML = `${wizardHead(4, 'Analysing', 'Every frame is measured with the detailed tracker. Keep this screen open.')}
+  const cap = d.capture, n = cap.clips.length;
+  main.innerHTML = `<div class="page-head"><div><h1>Analysing</h1><div class="sub">Every frame is measured with the detailed tracker. Keep this screen open.</div></div></div>
     <div class="panel stack"><div class="row"><span class="spinner"></span><b id="an-title">Preparing…</b></div>
       <div class="bar"><i id="an-bar" style="width:0%"></i></div><p class="small muted" id="an-sub"></p>
       <div><button class="btn sm quiet" id="an-cancel">Cancel</button></div></div>`;
   let cancelled = false;
   $('#an-cancel', main).onclick = () => { cancelled = true; };
   setCleanup(() => { cancelled = true; });
-  const estStrokes = Math.max(1, cap.live.strokes || 1);
   const t0 = performance.now();
   try {
-    const res = await analyseVideo(cap.blob, cap.mime, C.analysis.fps, (pr) => {
-      if (cancelled) return;
-      if (pr.phase === 'model') { $('#an-title', main).textContent = pr.cached ? 'Loading the tracker…' : 'Downloading the analysis engine (first time only)…'; $('#an-bar', main).style.width = `${Math.round(pr.p * 100)}%`; return; }
-      const el2 = (performance.now() - t0) / 1000, left = pr.p > 0.05 ? el2 / pr.p * (1 - pr.p) : NaN;
-      $('#an-title', main).textContent = `Analysing stroke ${Math.min(estStrokes, Math.floor(pr.p * estStrokes) + 1)} of ${estStrokes}`;
-      $('#an-bar', main).style.width = `${Math.round(pr.p * 100)}%`;
-      $('#an-sub', main).textContent = `Frame ${pr.i} of ${pr.total}${Number.isFinite(left) ? ` · about ${Math.max(1, Math.round(left))} s left` : ''}`;
-    }, () => cancelled);
-    const clip = {
-      id: TF.uid('c'), view: 'side', hand: d.hand, mime: cap.mime, file: null, width: res.width, height: res.height, fps: cap.fps, analysedFps: C.analysis.fps,
-      durationS: res.duration, calibration: d.calibration ? JSON.parse(JSON.stringify(d.calibration)) : null, frames: res.frames,
-      live: { strokes: cap.live.strokes, cadence: cap.live.cadence, fps: cap.live.fps }, captureSettings: cap.captureSettings, level: cap.level || null,
-      analysisSeconds: Math.round((performance.now() - t0) / 100) / 10,
-    };
-    const a = TF.analyseClip(clip);
-    if (!a.ok) { d.error = a.error; d.step = 'failed'; d.rerender(); return; }
-    if (clip.calibration) clip.calibration.footSpindle = a.calibration ? a.calibration.footSpindle : null;
-    // Save the session.
     const s = TF.newSession(r);
+    const built = [];
+    for (let ci = 0; ci < n; ci++) {
+      const c = cap.clips[ci];
+      const estStrokes = Math.max(1, c.live.strokes || 1);
+      const res = await analyseVideo(c.blob, c.mime, C.analysis.fps, (pr) => {
+        if (cancelled) return;
+        const which = n > 1 ? ` (${TF.HAND_POSITIONS[c.hand]}, ${ci + 1} of ${n})` : '';
+        if (pr.phase === 'model') { $('#an-title', main).textContent = (pr.cached ? 'Loading the tracker…' : 'Downloading the analysis engine (first time only)…') + which; $('#an-bar', main).style.width = `${Math.round(pr.p * 100)}%`; return; }
+        const el2 = (performance.now() - t0) / 1000, left = pr.p > 0.05 ? el2 / pr.p * (1 - pr.p) : NaN;
+        $('#an-title', main).textContent = `Analysing stroke ${Math.min(estStrokes, Math.floor(pr.p * estStrokes) + 1)} of ${estStrokes}${which}`;
+        $('#an-bar', main).style.width = `${Math.round(pr.p * 100)}%`;
+        $('#an-sub', main).textContent = `Frame ${pr.i} of ${pr.total}${Number.isFinite(left) ? ` · about ${Math.max(1, Math.round(left))} s left` : ''}`;
+      }, () => cancelled);
+      const clip = {
+        id: TF.uid('c'), view: 'side', hand: c.hand, mime: c.mime, file: null, width: res.width, height: res.height, fps: c.fps, analysedFps: C.analysis.fps,
+        durationS: res.duration, calibration: cap.cal ? JSON.parse(JSON.stringify(cap.cal)) : null, frames: res.frames,
+        live: c.live, captureSettings: c.captureSettings, level: c.level || null, captureWarnings: c.warnings || [],
+        analysisSeconds: Math.round((performance.now() - t0) / 100) / 10,
+      };
+      const a = TF.analyseClip(clip);
+      if (!a.ok) { if (ci === 0) { d.error = a.error; d.step = 'failed'; d.rerender(); return; } continue; }
+      const ext = /mp4/.test(c.mime) ? 'mp4' : 'webm';
+      clip.file = TF.PATHS.clip(r.id, s.id, clip.id, ext);
+      await putBlob(clip.file, c.blob);
+      built.push({ clip, a });
+    }
     s.discomfort = JSON.parse(JSON.stringify(d.discomfort));
-    s.retestOf = d.retestOf; s.change = d.change;
+    s.retestOf = d.retestOf;
     s.profile = JSON.parse(JSON.stringify(r.profile)); s.bike = JSON.parse(JSON.stringify(r.bike));
-    const ext = /mp4/.test(cap.mime) ? 'mp4' : 'webm';
-    clip.file = TF.PATHS.clip(r.id, s.id, clip.id, ext);
-    await putBlob(clip.file, cap.blob);
-    s.clips.push(clip);
-    const results = TF.buildResults(a, s.profile, clip.hand, s.discomfort, Settings.v.units);
+    s.marks = cap.marks ? JSON.parse(JSON.stringify(cap.marks)) : null;
+    s.bikeMeasures = cap.cal ? cap.cal.bikeMeasures : null;
+    s.markedWithRider = !!cap.markedWithRider;
+    s.replies = cap.replies || [];
+    s.clips.push(built[0].clip);
+    if (built[1]) s.secondClip = built[1].clip;
+    const a = built[0].a;
+    const results = TF.buildResults(a, s.profile, built[0].clip.hand, s.discomfort, Settings.v.units, { history: historyFor(r, s), bikeMeasures: s.bikeMeasures });
     s.results = { snapshot: true, units: Settings.v.units, recommendation: results.recommendation, gate: results.gate, gauges: results.gauges, cadence: a.cadence, strokes: a.strokes.length };
     r.sessions.push(s);
     r.modified = s.modified = new Date().toISOString();
@@ -4187,7 +4550,7 @@ async function renderAnalyse(main, r, d) {
     go(`#/session/${s.id}`);
     if (Settings.v.exportPrompt) setTimeout(() => offerExport(), 600);
   } catch (e) {
-    if (cancelled || e.message === 'cancelled') { toast('Analysis cancelled.'); d.step = 'calibrate'; d.rerender(); return; }
+    if (cancelled || e.message === 'cancelled') { toast('Analysis cancelled.'); S.session = null; go('#/'); return; }
     console.error(e); d.error = e.message; d.step = 'failed'; d.rerender();
   }
 }
@@ -4200,10 +4563,10 @@ async function offerExport() {
 }
 
 function renderFailed(main, r, d) {
-  main.innerHTML = `${wizardHead(4, 'The analysis could not finish', '')}
+  main.innerHTML = `<div class="page-head"><div><h1>The analysis could not finish</h1></div></div>
     <div class="banner bad">${icon('alert')}<div class="grow"><b>${esc(d.error || 'Something went wrong.')}</b><br>Usually this means the rider was not clearly in view for long enough, or the recording was too short. Check the set-up and record again.</div></div>
     <div class="btn-row" style="margin-top:14px"><button class="btn primary" id="f-again">${icon('camera')}Record again</button><a class="btn quiet" href="#/help">Troubleshooting</a></div>`;
-  $('#f-again', main).onclick = () => { d.step = 'setup'; d.rerender(); };
+  $('#f-again', main).onclick = () => { d.step = 'checkin'; d.rerender(); };
 }
 
 /* ---- app-results.js ---- */

@@ -410,7 +410,7 @@ test('A3: suggestion made, still low → "One more step", with the measured chan
   const r = s2.res.recommendation.current;
   assert.equal(r.history.status, 'progress');
   assert.match(r.text, /^One more step: raise the saddle (\d+–)?\d+ mm, then retest\.$/);
-  assert.match(r.why, /^Your knee extension went from \d+° to \d+° after raising the saddle 10 mm, and is still below the target range of 140–150°\.$/);
+  assert.match(r.why, /^Your knee extension went from \d+° to \d+° after raising the saddle 10 mm, and is still (just )?below the target range of 140–150°\.$/);
 });
 
 test('A3: suggestion not made → says so; does not present the advice as new', () => {
@@ -531,4 +531,23 @@ test('A2 review: an accurate mark is kept, and honest tracking noise is not reje
     near(a.metrics.kops.value, trueKopsAtLevel(sim), 6, `noise ${noise}: KOPS`);
     if (noise >= 8) assert.equal(a.metrics.kops.confidence, 'low', `noise ${noise}: low confidence, not silence`);
   }
+});
+
+test('B: a spindle mark made with the rider on, before recording, starts the fit (heel and toe from the still frame)', () => {
+  const sim = TF.simulateRider({ noisePx: 2 });
+  const i = TF.nearestFrameIndex(sim.frames, sim.calT);
+  const t = sim.truth[i];
+  const cal = calOf(sim.marksWithRider, sim, { markedWithRider: true, spindleFoot: { heel: t.heelPx, toe: t.toePx } });
+  const a = TF.analyseClip({ width: sim.width, height: sim.height, frames: sim.frames, calibration: cal });
+  assert.equal(cal.spindleFit.source, 'fit+mark');
+  near(cal.footSpindle.a, sim.footSpindleTruth.a, 0.05, 'a');
+  near(a.metrics.kops.value, trueKopsAtLevel(sim), 5, 'KOPS');
+});
+
+test('B: a reading within a degree of the band edge is "just below", never a rounded contradiction', () => {
+  const t = TF.targetsFor(PROFILE, 'hoods');
+  const r = TF.recommend({ ok: true, metrics: { kneeExtension: { value: 139.6, confidence: 'high' } } }, t, {});
+  assert.match(r.current.why, /^Your knee extension is 140°, just below the target range of 140–150°\./);
+  const r2 = TF.recommend({ ok: true, metrics: { kneeExtension: { value: 136.2, confidence: 'high' } } }, t, {});
+  assert.match(r2.current.why, /^Your knee extension is 136°, below the target range/);
 });

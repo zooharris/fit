@@ -6,8 +6,9 @@
 const ART = (() => {
   const b = BRAND.bike, j = BRAND.j;
   const pts = {
-    rearAxle: b.rear, frontAxle: b.front, bb: b.bb, spindle: b.spindle,
+    rearAxle: b.rear, frontAxle: b.front, bb: b.bb, spindle: { x: b.bb.x + 56, y: b.bb.y },
     tyreTop: { x: b.rear.x, y: b.rear.y - b.r - 6 }, tyreBack: { x: b.rear.x - b.r - 6, y: b.rear.y },
+    saddleNose: b.saddleNose, barTop: b.barTop,
   };
   return { b, j, pts, groundY: b.rear.y + b.r + 8 };
 })();
@@ -75,16 +76,55 @@ const SETUP_ART = {
   clothes() { return riderSVG({ angles: true, label: 'Fitted clothing so every joint is clearly visible' }); },
 };
 
-/** The guide drawn over the live camera: where the bike should sit in the frame. */
-function framingGuideSVG() {
-  return `<svg class="guide" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <g fill="none" stroke="rgba(255,255,255,.32)" stroke-width="4" stroke-dasharray="14 12">
-      <circle cx="578" cy="681" r="151"/><circle cx="1023" cy="681" r="151"/>
-      <line x1="300" y1="832" x2="1300" y2="832"/>
-      <line x1="230" y1="712" x2="1370" y2="712" stroke="rgba(255,106,26,.5)"/>
+/**
+ * silhouetteSVG(W, H, flip) — the placement guide, in the video's own pixel coordinates (so it sits exactly on
+ * the recorded frame): the brand bike with each wheel 20% of the frame width, the ground at 84% of the height,
+ * centred, and the brand rider on it (drawn a little smaller about the bottom bracket so the head fits 16:9).
+ * Dashed 35% white for the bike, brighter wheels (what the user lines up), a faint rider. flip mirrors it for a
+ * bike facing left.
+ */
+function silhouetteGeometry(W, H, flip) {
+  const b = BRAND.bike, S = TF.CONFIG.camera.silhouette;
+  const k = (S.wheelFrac * W) / (2 * b.r);
+  const ty = S.groundFrac * H - (b.rear.y + b.r) * k;
+  const cx = (b.rear.x + b.front.x) / 2;
+  const tx = S.centreXFrac * W - cx * k;
+  // Map a brand point to video pixels.
+  const map = (p) => { let x = tx + p.x * k; if (flip) x = W - x; return { x, y: ty + p.y * k }; };
+  return { k, tx, ty, map, transform: flip ? `translate(${W} 0) scale(-1 1) translate(${tx} ${ty}) scale(${k})` : `translate(${tx} ${ty}) scale(${k})` };
+}
+function silhouetteSVG(W, H, flip, ghosts) {
+  const g = silhouetteGeometry(W, H, flip), b = BRAND.bike, j = BRAND.j, rs = TF.CONFIG.camera.silhouetteRiderScale;
+  const L = (a, c) => `<line x1="${a.x}" y1="${a.y}" x2="${c.x}" y2="${c.y}"/>`;
+  const sw = 2.5 / g.k; // ~2.5 px on the video whatever the scale
+  const riderT = `translate(${b.bb.x} ${b.bb.y}) scale(${rs}) translate(${-b.bb.x} ${-b.bb.y})`;
+  const pl = (pts) => pts.map((p) => `${p.x},${p.y}`).join(' ');
+  let ghostHTML = '';
+  if (ghosts) {
+    for (const [key, p] of Object.entries(ghosts)) {
+      ghostHTML += `<circle cx="${p.x}" cy="${p.y}" r="${Math.max(10, W / 90)}" fill="none" stroke="#20D6B5" stroke-width="${Math.max(3, W / 400)}"/><circle cx="${p.x}" cy="${p.y}" r="${Math.max(3, W / 400)}" fill="#20D6B5"/>`;
+      void key;
+    }
+  }
+  return `<svg class="sil" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <g transform="${g.transform}">
+      <g fill="none" stroke="rgba(255,255,255,.35)" stroke-width="${sw * 1.6}" stroke-dasharray="${14 / g.k * 0.6} ${10 / g.k * 0.6}" stroke-linecap="round">
+        ${L(b.rear, b.bb)}${L(b.rear, b.seat)}${L(b.bb, b.seat)}${L(b.seat, b.headTop)}${L(b.bb, b.headBot)}${L(b.headTop, b.headBot)}${L(b.headBot, b.front)}${L(b.seat, b.saddle)}${L(b.headTop, b.barTop)}
+        <line x1="${b.saddle.x - 42}" y1="${b.saddle.y}" x2="${b.saddleNose.x}" y2="${b.saddleNose.y}"/>
+      </g>
+      <g fill="none" stroke="rgba(255,255,255,.75)" stroke-width="${sw * 2}" stroke-dasharray="${22 / g.k * 0.6} ${9 / g.k * 0.6}">
+        <circle cx="${b.rear.x}" cy="${b.rear.y}" r="${b.r}"/><circle cx="${b.front.x}" cy="${b.front.y}" r="${b.r}"/>
+      </g>
+      <g fill="rgba(255,255,255,.6)"><circle cx="${b.rear.x}" cy="${b.rear.y}" r="${6 / g.k * 0.6}"/><circle cx="${b.front.x}" cy="${b.front.y}" r="${6 / g.k * 0.6}"/><circle cx="${b.bb.x}" cy="${b.bb.y}" r="${7 / g.k * 0.6}"/></g>
+      <line x1="${b.rear.x - b.r - 40}" y1="${b.rear.y + b.r}" x2="${b.front.x + b.r + 40}" y2="${b.front.y + b.r}" stroke="rgba(255,255,255,.35)" stroke-width="${sw}"/>
+      <g transform="${riderT}" fill="none" stroke="rgba(255,255,255,.16)" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="${j.hip.x}" y1="${j.hip.y}" x2="${j.shoulder.x}" y2="${j.shoulder.y}" stroke-width="70"/>
+        <polyline points="${pl([j.hip, j.knee, j.ankle])}" stroke-width="54"/>
+        <polyline points="${pl([j.heel, j.toe])}" stroke-width="28"/>
+        <polyline points="${pl([j.shoulder, j.elbow, j.wrist])}" stroke-width="34"/>
+        <circle cx="${j.head.x}" cy="${j.head.y}" r="38" fill="rgba(255,255,255,.16)" stroke="none"/>
+      </g>
     </g>
-    <circle cx="760" cy="712" r="12" fill="none" stroke="rgba(255,138,76,.9)" stroke-width="4"/>
-    <text x="1370" y="700" text-anchor="end" fill="rgba(255,138,76,.95)" style="font:600 24px system-ui">bottom bracket about here</text>
-    <text x="800" y="60" text-anchor="middle" fill="rgba(255,255,255,.55)" style="font:600 24px system-ui">whole rider and both wheels in the frame</text>
+    ${ghostHTML}
   </svg>`;
 }
