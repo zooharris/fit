@@ -126,9 +126,14 @@ const TF_CONFIG = {
     // on the crank circle. Rejected (foot-path fallback) when the RMS distance off the circle exceeds this share
     // of the crank length.
     spindleFitMaxResidual: 0.06,
+    spindleFitJitterFactor: 1.0,  // …or, when the tracking is noisier than that, up to 1.0× the foot's own frame-to-frame jitter
     spindleFitIterations: 30,
     spindleMarkWeightFrames: 10,  // a spindle mark made with the rider on counts as this many frames
     spindleFitMinFrames: 30,
+    // The ride also refines the bottom-bracket position (centre of the pedal circle). A refined centre that
+    // disagrees with the mark by more than this (px at 720p, scaled) means the mark was off: the refined centre
+    // is used and the rider is told. Within it, the mark stands (the refinement carries a small noise bias).
+    bbRefineUsePx: 6,
   },
 
   confidence: {
@@ -769,12 +774,80 @@ function fitFootSpindle(frames, bb, crankPx, opts) {
   let fit = solve(pts, rel);
   // One robust pass: drop frames well off the circle (tracking slips) and refit.
   const med = median(fit.rs);
-  const keep = pts.filter((_, i) => fit.rs[i] <= Math.max(3 * med, crankPx * 0.02));
-  if (keep.length >= A.spindleFitMinFrames && keep.length < pts.length) fit = solve(keep, fit.rel);
+  let keep = pts.filter((_, i) => fit.rs[i] <= Math.max(3 * med, crankPx * 0.02));
+  if (keep.length < A.spindleFitMinFrames) keep = pts;
+  if (keep.length < pts.length) fit = solve(keep, fit.rel);
+
+  // The tracking's own noise: frame-to-frame jitter of the toe (second differences, scaled to one frame).
+  const jit = [];
+  for (let i = 2; i < keep.length; i++) { const a2 = keep[i].toe, b2 = keep[i - 1].toe, c2 = keep[i - 2].toe; jit.push(Math.hypot(a2.x - 2 * b2.x + c2.x, a2.y - 2 * b2.y + c2.y) / Math.sqrt(6)); }
+  const jitterPx = median(jit) || 0;
+
+  // Refine the centre from the ride (a, b and the centre free; radius fixed). A mark that is clearly off is
+  // replaced; otherwise the mark stands, because the refinement carries a small bias that grows with noise.
+  const refined = refineCentre(keep, bb, crankPx, fit.rel, A.spindleFitIterations);
+  const scalePx = (o.frameH || 720) / 720;
+  const shiftPx = refined ? dist(refined.c, bb) : 0;
+  const bbCorrected = !!refined && shiftPx > Math.max(A.bbRefineUsePx * scalePx, 1.5 * jitterPx);
+  const centre = bbCorrected ? refined.c : bb;
+  if (bbCorrected) {
+    // The offset solved jointly with the centre is the one to keep; measure its residual against that centre.
+    const rows = keep.map((f) => { const fr = footFrame(f.heel, f.toe); const q = add(fr.o, add(scale(fr.ex, refined.rel.a * fr.len), scale(fr.ey, refined.rel.b * fr.len))); return Math.abs(dist(q, centre) - crankPx); });
+    fit = { rel: refined.rel, rs: rows, rms: Math.sqrt(rows.reduce((t, x) => t + x * x, 0) / rows.length) };
+  }
+
   const residual = fit.rms / crankPx;
-  const ok = residual <= A.spindleFitMaxResidual;
-  return { ok, rel: fit.rel, residual, frames: keep.length, source: mark ? 'fit+mark' : 'fit',
+  const limitPx = Math.max(A.spindleFitMaxResidual * crankPx, A.spindleFitJitterFactor * jitterPx);
+  const ok = fit.rms <= limitPx;
+  return { ok, rel: fit.rel, residual, jitterPx, frames: keep.length, source: mark ? 'fit+mark' : 'fit',
+    bb: centre, bbCorrected, bbShiftPx: shiftPx, bbRefined: refined ? refined.c : null,
     reason: ok ? '' : `The pedal could not be followed reliably (the foot track was ${Math.round(residual * 100)}% of the crank length off the crank circle).` };
+}
+
+/** Gauss–Newton with the spindle offset and the circle centre free, radius fixed. Returns { rel, c } or null. */
+function refineCentre(pts, c0, r, start, iterations) {
+  let a = start.a, b = start.b, cx = c0.x, cy = c0.y, lambda = 1e-3;
+  const evalAt = (aa, bb2, x, y) => {
+    let cost = 0; const rows = [];
+    for (const f of pts) {
+      const fr = footFrame(f.heel, f.toe);
+      const q = add(fr.o, add(scale(fr.ex, aa * fr.len), scale(fr.ey, bb2 * fr.len)));
+      const d = { x: q.x - x, y: q.y - y }, L = Math.hypot(d.x, d.y) || 1e-9, u = { x: d.x / L, y: d.y / L };
+      const res = L - r;
+      rows.push({ r: res, j: [dot(u, fr.ex) * fr.len, dot(u, fr.ey) * fr.len, -u.x, -u.y] });
+      cost += res * res;
+    }
+    return { cost, rows };
+  };
+  let cur = evalAt(a, b, cx, cy);
+  for (let it = 0; it < iterations; it++) {
+    const H = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], g = [0, 0, 0, 0];
+    for (const row of cur.rows) for (let i = 0; i < 4; i++) { g[i] += row.j[i] * row.r; for (let k = 0; k < 4; k++) H[i][k] += row.j[i] * row.j[k]; }
+    let accepted = false;
+    for (let k = 0; k < 8 && !accepted; k++) {
+      const M = H.map((row, i) => [...row.map((v, j) => (i === j ? v * (1 + lambda) : v)), -g[i]]);
+      const d = solveLinear(M);
+      if (!d) return null;
+      const next = evalAt(a + d[0], b + d[1], cx + d[2], cy + d[3]);
+      if (next.cost < cur.cost) { a += d[0]; b += d[1]; cx += d[2]; cy += d[3]; const gain = cur.cost - next.cost; cur = next; lambda = Math.max(1e-7, lambda / 3); accepted = true; if (gain < 1e-10 * (1 + cur.cost)) it = iterations; }
+      else lambda *= 10;
+    }
+    if (!accepted) break;
+  }
+  return finite(cx) && finite(cy) ? { rel: { a, b }, c: { x: cx, y: cy } } : null;
+}
+/** Gaussian elimination on an augmented n×(n+1) matrix. */
+function solveLinear(M) {
+  const n = M.length;
+  for (let i = 0; i < n; i++) {
+    let p = i; for (let k = i + 1; k < n; k++) if (Math.abs(M[k][i]) > Math.abs(M[p][i])) p = k;
+    [M[i], M[p]] = [M[p], M[i]];
+    if (Math.abs(M[i][i]) < 1e-12) return null;
+    for (let k = i + 1; k < n; k++) { const f = M[k][i] / M[i][i]; for (let j = i; j <= n; j++) M[k][j] -= f * M[i][j]; }
+  }
+  const x = new Array(n);
+  for (let i = n - 1; i >= 0; i--) { let t = M[i][n]; for (let j = i + 1; j < n; j++) t -= M[i][j] * x[j]; x[i] = t / M[i][i]; }
+  return x;
 }
 
 /* ==========================================================================
@@ -980,7 +1053,9 @@ function analyseClip(clip, opts) {
   // crank level (empty saddle, or a rider holding still), so it gives the crank circle; when the rider was on
   // the bike it also gives one exact foot-to-spindle moment, used to start and steady the fit.
   const bb = cal ? cal.taps.bb : null;
-  const crankPx = cal ? dist(cal.taps.bb, cal.taps.spindle) : null;
+  // The crank's radius in pixels from the wheel scale, not from the two marks: a bottom-bracket mark that is off
+  // would otherwise corrupt the radius as well as the centre, and the ride could not put either right.
+  const crankPx = cal ? (finite(cal.scaleWheel) && finite(cal.scaleCrank) && cal.scaleCrank > 0 ? dist(cal.taps.bb, cal.taps.spindle) * cal.scaleWheel / cal.scaleCrank : dist(cal.taps.bb, cal.taps.spindle)) : null;
   let footRel = cal && cal.footSpindle ? cal.footSpindle : null;
   if (cal && !footRel && cal.taps && cal.taps.spindle) {
     let mark = null;
@@ -989,20 +1064,28 @@ function analyseClip(clip, opts) {
       const f = sm[nearestFrameIndex(sm, cal.calT)];
       if (f && f.j.heel && f.j.toe) mark = { heel: f.j.heel, toe: f.j.toe, spindle: cal.taps.spindle };
     }
-    const fit = fitFootSpindle(sm.map((f) => ({ heel: f.j.heel, toe: f.j.toe })), bb, crankPx, { mark, facing });
-    cal.spindleFit = { ok: fit.ok, residual: fit.residual, frames: fit.frames, source: fit.source, reason: fit.reason };
-    if (fit.ok) footRel = fit.rel;
-    else result.notes.push(fit.reason || 'The pedal could not be followed; strokes were found from the foot path.');
+    const fit = fitFootSpindle(sm.map((f) => ({ heel: f.j.heel, toe: f.j.toe })), bb, crankPx, { mark, facing, frameH: H });
+    cal.spindleFit = { ok: fit.ok, residual: fit.residual, jitterPx: fit.jitterPx, frames: fit.frames, source: fit.source, reason: fit.reason, bbCorrected: !!fit.bbCorrected, bbShiftPx: fit.bbShiftPx || 0 };
+    if (fit.ok) {
+      footRel = fit.rel;
+      if (fit.bbCorrected) {
+        cal.bbRefined = fit.bb;
+        const mm = fit.bbShiftPx / cal.pxPerMm;
+        cal.spindleFit.bbShiftMm = mm;
+        result.notes.push(`The bottom-bracket mark looked about ${Math.round(mm)} mm off; the pedal circle from the ride was used instead. Re-mark the bottom bracket next time for a surer knee-over-pedal reading.`);
+      }
+    } else result.notes.push(fit.reason || 'The pedal could not be followed; strokes were found from the foot path.');
   }
   if (cal) cal.footSpindle = footRel;
+  const bbUsed = cal ? (cal.bbRefined || cal.taps.bb) : null;
 
   // Per-frame crank angle (unwrapped, degrees; 0 = forward, −90 = bottom, decreasing as it turns).
   const phase = sm.map((f) => {
-    if (bb && footRel && f.j.heel && f.j.toe) {
+    if (bbUsed && footRel && f.j.heel && f.j.toe) {
       const s = spindleFromFoot(f.j.heel, f.j.toe, footRel);
-      const w = toWorld(s, bb, facing, 1);
+      const w = toWorld(s, bbUsed, facing, 1);
       const a = Math.atan2(w.y, w.x) * DEG;
-      const onCircle = add(bb, scale(norm(sub(s, bb)), crankPx));
+      const onCircle = add(bbUsed, scale(norm(sub(s, bbUsed)), crankPx));
       return { a, spindle: onCircle };
     }
     return { a: NaN, spindle: null };
@@ -1168,7 +1251,9 @@ function analyseClip(clip, opts) {
       result.metrics[m] = { value: NaN, spread: NaN, confidence: 'none', reason: 'Needs the calibration taps to measure in millimetres.', n: 0 };
       continue;
     }
-    result.metrics[m] = { value, spread, confidence: conf.level, reason: conf.reason, n: values.filter(finite).length, visibility: conf.vis, present: conf.present };
+    let level = conf.level, reason = conf.reason;
+    if (m === 'kops' && cal && cal.spindleFit && cal.spindleFit.bbCorrected && rank(level) > rank('medium')) { level = 'medium'; reason = (reason ? reason + ' ' : '') + 'The bottom-bracket mark was corrected from the ride.'; }
+    result.metrics[m] = { value, spread, confidence: level, reason, n: values.filter(finite).length, visibility: conf.vis, present: conf.present };
   }
 
   // Geometry kept for recommendations: medians of joints at BDC and at crank-forward, in px.
@@ -1274,7 +1359,7 @@ function saddleHeightChange(analysis, targetDeg) {
   const seg = analysis.segments;
   const cal = analysis.calibration;
   if (!g || !g.hip || !g.ankle || !cal || !finite(seg.thigh) || !finite(seg.shin)) return NaN;
-  const bb = cal.taps.bb, facing = analysis.facing, k = cal.pxPerMm;
+  const bb = cal.bbRefined || cal.taps.bb, facing = analysis.facing, k = cal.pxPerMm;
   const hip = toWorld(g.hip, bb, facing, k), ankle = toWorld(g.ankle, bb, facing, k);
   // The saddle moves along the line from the bottom bracket through the hip (effective seat tube).
   const u = norm(hip);
@@ -1291,7 +1376,7 @@ function saddleSetbackChange(analysis, targetMm) {
   const g = analysis.geometry && analysis.geometry.forward;
   const seg = analysis.segments, cal = analysis.calibration;
   if (!g || !g.hip || !g.ankle || !g.spindle || !cal || !finite(seg.thigh) || !finite(seg.shin)) return NaN;
-  const bb = cal.taps.bb, facing = analysis.facing, k = cal.pxPerMm;
+  const bb = cal.bbRefined || cal.taps.bb, facing = analysis.facing, k = cal.pxPerMm;
   const hip = toWorld(g.hip, bb, facing, k), ankle = toWorld(g.ankle, bb, facing, k), spindle = toWorld(g.spindle, bb, facing, k);
   const T = seg.thigh, S = seg.shin;
   const kops = (back) => { const h = { x: hip.x - back, y: hip.y }; const kn = solveKnee(h, ankle, T, S); return kn ? kn.x - spindle.x : NaN; };

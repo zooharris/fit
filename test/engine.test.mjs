@@ -503,3 +503,32 @@ test('A5: schema 2 — new sessions carry the new fields; schema 1 files move fo
   const newer = TF.migrateFile({ format: 'tango-fit', schema: 9, riders: [] });
   assert.equal(newer.schema, 9, 'a newer file keeps its schema');
 });
+
+/* Fable's review of Part A (25 Oct): the bottom bracket is refined from the ride, and acceptance is
+   measured against the tracking's own jitter, not a fixed share of the crank. */
+test('A2 review: a bottom-bracket mark 15 px off is corrected from the ride; KOPS stays right', () => {
+  for (const [label, p, sh] of [['x', { noisePx: 3 }, { x: 15, y: 0 }], ['y', { noisePx: 3 }, { x: 0, y: 25 }], ['facing left', { facing: -1, side: 'right', bbPx: { x: 720, y: 540 }, noisePx: 3 }, { x: -15, y: 0 }], ['no ankling', { noisePx: 3, ankleSwing: 0 }, { x: 15, y: 0 }]]) {
+    const sim = TF.simulateRider(p);
+    const marks = JSON.parse(JSON.stringify(sim.marks)); marks.bb.x += sh.x; marks.bb.y += sh.y;
+    const cal = calOf(marks, sim, { markedWithRider: false });
+    const a = TF.analyseClip({ width: sim.width, height: sim.height, frames: sim.frames, calibration: cal });
+    assert.equal(cal.spindleFit.ok, true, label);
+    assert.equal(cal.spindleFit.bbCorrected, true, `${label}: corrected`);
+    near(TF.dist(cal.bbRefined, sim.marks.bb), 0, 4, `${label}: refined centre vs truth (px)`);
+    near(a.metrics.kops.value, trueKopsAtLevel(sim), 12, `${label}: KOPS`);
+    assert.notEqual(a.metrics.kops.confidence, 'high', `${label}: confidence capped`);
+    assert.ok(a.notes.some((n) => /bottom-bracket mark looked about \d+ mm off/.test(n)), `${label}: the rider is told`);
+  }
+});
+
+test('A2 review: an accurate mark is kept, and honest tracking noise is not rejected', () => {
+  for (const noise of [1.2, 3, 8, 12]) {
+    const sim = TF.simulateRider({ noisePx: noise });
+    const cal = calOf(sim.marks, sim, { markedWithRider: false });
+    const a = TF.analyseClip({ width: sim.width, height: sim.height, frames: sim.frames, calibration: cal });
+    assert.equal(cal.spindleFit.ok, true, `noise ${noise}: accepted`);
+    assert.equal(cal.spindleFit.bbCorrected, false, `noise ${noise}: mark kept`);
+    near(a.metrics.kops.value, trueKopsAtLevel(sim), 6, `noise ${noise}: KOPS`);
+    if (noise >= 8) assert.equal(a.metrics.kops.confidence, 'low', `noise ${noise}: low confidence, not silence`);
+  }
+});
