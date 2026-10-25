@@ -60,7 +60,7 @@ const SETUP_ART = {
       <text x="300" y="34" text-anchor="middle" style="fill:var(--ink-3);font:600 17px var(--font);letter-spacing:.08em">SEEN FROM ABOVE</text>
       <rect x="150" y="72" width="300" height="20" rx="10" fill="var(--logo-bike)"/>
       <circle cx="292" cy="82" r="20" fill="none" stroke="var(--logo-bike)" stroke-width="6"/>
-      <text x="300" y="62" text-anchor="middle" style="fill:var(--ink-2);font:600 16px var(--font)">bike · chainring on the far side</text>
+      <text x="300" y="62" text-anchor="middle" style="fill:var(--ink-2);font:600 16px var(--font)">bike · either side to the camera</text>
       <line x1="292" y1="112" x2="292" y2="232" stroke="var(--accent)" stroke-width="4" stroke-dasharray="10 8"/>
       <text x="308" y="180" style="fill:var(--ink);font:700 22px var(--font)">2.5–3 m</text>
       <rect x="262" y="234" width="60" height="32" rx="8" fill="var(--accent)"/><circle cx="292" cy="250" r="8" fill="var(--bg-2)"/>

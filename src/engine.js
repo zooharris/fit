@@ -573,7 +573,7 @@ const BIKE_MARKS = [
   { key: 'tyreTop', label: 'Top of the rear tyre', help: 'The highest point of the rear tyre, directly above the axle.' },
   { key: 'tyreBack', label: 'Back of the rear tyre', help: 'The rearmost point of the rear tyre, level with the axle.' },
   { key: 'frontAxle', label: 'Front axle', help: 'The centre of the front wheel.' },
-  { key: 'bb', label: 'Bottom bracket', help: 'The centre of the crank, where the crank arms meet the frame.' },
+  { key: 'bb', label: 'Bottom bracket', help: 'The centre of the crank: the middle of the crank bolt, on either side of the bike.' },
   { key: 'spindle', label: 'Pedal spindle', help: 'The centre of the near pedal, with the crank level and pointing forward.' },
   { key: 'saddleNose', label: 'Saddle nose', help: 'The very tip of the saddle, at the front.' },
   { key: 'barTop', label: 'Top of the hood', help: 'Where your hand rests on top of the hood (on a flat bar, the top of the grip; on aero bars, the top of the pad).' },

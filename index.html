@@ -569,7 +569,7 @@ details.group .gbody { margin-top: 14px; }
 </head>
 <body>
 <noscript><div style="padding:24px;font-family:system-ui">Tango Fitter needs JavaScript turned on.</div></noscript>
-<!-- Tango Fitter 0.1.0-beta.1 · built 2026-10-25 21:03 UTC · one self-contained file -->
+<!-- Tango Fitter 0.1.0-beta.1 · built 2026-10-25 22:53 UTC · one self-contained file -->
 <script>
 /* ==========================================================================
    Tango Fitter — measurement engine
@@ -1146,7 +1146,7 @@ const BIKE_MARKS = [
   { key: 'tyreTop', label: 'Top of the rear tyre', help: 'The highest point of the rear tyre, directly above the axle.' },
   { key: 'tyreBack', label: 'Back of the rear tyre', help: 'The rearmost point of the rear tyre, level with the axle.' },
   { key: 'frontAxle', label: 'Front axle', help: 'The centre of the front wheel.' },
-  { key: 'bb', label: 'Bottom bracket', help: 'The centre of the crank, where the crank arms meet the frame.' },
+  { key: 'bb', label: 'Bottom bracket', help: 'The centre of the crank: the middle of the crank bolt, on either side of the bike.' },
   { key: 'spindle', label: 'Pedal spindle', help: 'The centre of the near pedal, with the crank level and pointing forward.' },
   { key: 'saddleNose', label: 'Saddle nose', help: 'The very tip of the saddle, at the front.' },
   { key: 'barTop', label: 'Top of the hood', help: 'Where your hand rests on top of the hood (on a flat bar, the top of the grip; on aero bars, the top of the pad).' },
@@ -3361,7 +3361,7 @@ const SETUP_ART = {
       <text x="300" y="34" text-anchor="middle" style="fill:var(--ink-3);font:600 17px var(--font);letter-spacing:.08em">SEEN FROM ABOVE</text>
       <rect x="150" y="72" width="300" height="20" rx="10" fill="var(--logo-bike)"/>
       <circle cx="292" cy="82" r="20" fill="none" stroke="var(--logo-bike)" stroke-width="6"/>
-      <text x="300" y="62" text-anchor="middle" style="fill:var(--ink-2);font:600 16px var(--font)">bike · chainring on the far side</text>
+      <text x="300" y="62" text-anchor="middle" style="fill:var(--ink-2);font:600 16px var(--font)">bike · either side to the camera</text>
       <line x1="292" y1="112" x2="292" y2="232" stroke="var(--accent)" stroke-width="4" stroke-dasharray="10 8"/>
       <text x="308" y="180" style="fill:var(--ink);font:700 22px var(--font)">2.5–3 m</text>
       <rect x="262" y="234" width="60" height="32" rx="8" fill="var(--accent)"/><circle cx="292" cy="250" r="8" fill="var(--bg-2)"/>
@@ -3829,7 +3829,7 @@ route('/help', async (main) => {
     <p><b>Fitting yourself:</b> set the phone up first, mark the bike with the saddle empty, then walk over and get on; the app waits and starts when it sees you pedalling steadily. <b>Helping a friend:</b> they can already be on the bike while you set up; the app notices and speaks to them. Either way the screens are the same.</p>
     <ul>
       <li><b>Trainer.</b> The bike must stay still and level. A rear-wheel or direct-drive trainer, or rollers with a front-wheel riser, all work.</li>
-      <li><b>Which side.</b> Film the side without the chainring, so it doesn't hide the foot.</li>
+      <li><b>Which side.</b> Either side works: the app works out which side faces the camera and which way the bike points (tap <b>Flip</b> so the outline matches). On the chainring side, mark the bottom bracket at the centre of the crank bolt; it is the same point.</li>
       <li><b>Clothing and light.</b> Fitted clothing that stands out from the background; light from the camera's side, not a bright window behind the bike.</li>
       <li><b>Sound.</b> Volume up and, on iPhone, the silent switch off. Everything the rider needs to know while pedalling is spoken.</li>
     </ul>

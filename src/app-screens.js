@@ -396,7 +396,7 @@ route('/help', async (main) => {
     <p><b>Fitting yourself:</b> set the phone up first, mark the bike with the saddle empty, then walk over and get on; the app waits and starts when it sees you pedalling steadily. <b>Helping a friend:</b> they can already be on the bike while you set up; the app notices and speaks to them. Either way the screens are the same.</p>
     <ul>
       <li><b>Trainer.</b> The bike must stay still and level. A rear-wheel or direct-drive trainer, or rollers with a front-wheel riser, all work.</li>
-      <li><b>Which side.</b> Film the side without the chainring, so it doesn't hide the foot.</li>
+      <li><b>Which side.</b> Either side works: the app works out which side faces the camera and which way the bike points (tap <b>Flip</b> so the outline matches). On the chainring side, mark the bottom bracket at the centre of the crank bolt; it is the same point.</li>
       <li><b>Clothing and light.</b> Fitted clothing that stands out from the background; light from the camera's side, not a bright window behind the bike.</li>
       <li><b>Sound.</b> Volume up and, on iPhone, the silent switch off. Everything the rider needs to know while pedalling is spoken.</li>
     </ul>
