@@ -86,25 +86,31 @@ test('analysis without calibration: angles still measured, KOPS and millimetres 
   assert.ok(res.gauges.find((g) => g.metric === 'kops').status === 'none');
 });
 
-test('section 15: saddle 15 mm too low → raise, 10–25 mm', () => {
+// 2.0 E1 replaces Beta 1's "10–25 mm" expectation: one step is at most 10 mm, and a correction that reaches the
+// cap is a single 10 mm step.
+test('2.0 E1: saddle 15 mm too low → "Raise the saddle 10 mm, then retest."', () => {
   const { a } = analyseSim({ saddleOffsetMm: -15 });
-  const res = TF.buildResults(a, PROFILE, 'hoods', null, 'metric');
-  const r = res.recommendation.current;
-  assert.ok(r, 'a recommendation');
+  const r = TF.buildResults(a, PROFILE, 'hoods', null, 'metric').recommendation.current;
   assert.equal(r.id, 'saddleHeight');
   assert.equal(r.direction, 1, 'raise');
-  const mid = (r.amount.lo + r.amount.hi) / 2;
-  assert.ok(mid >= 10 && mid <= 25, `range ${r.amount.lo}–${r.amount.hi}`);
-  assert.match(r.text, /^Raise the saddle \d+–\d+ mm, then retest\.$/);
+  assert.deepEqual([r.amount.lo, r.amount.hi], [10, 10]);
+  assert.equal(r.text, 'Raise the saddle 10 mm, then retest.');
+  assert.match(r.note, /no more than 10 mm at a time/);
 });
-
-test('section 15: saddle 15 mm too high → lower, 10–25 mm', () => {
+test('2.0 E1: saddle 15 mm too high → "Lower the saddle 10 mm, then retest."', () => {
   const { a } = analyseSim({ saddleOffsetMm: 15 });
   const r = TF.buildResults(a, PROFILE, 'hoods', null, 'metric').recommendation.current;
   assert.equal(r.id, 'saddleHeight');
   assert.equal(r.direction, -1, 'lower');
-  const mid = (r.amount.lo + r.amount.hi) / 2;
-  assert.ok(mid >= 10 && mid <= 25, `range ${r.amount.lo}–${r.amount.hi}`);
+  assert.equal(r.text, 'Lower the saddle 10 mm, then retest.');
+});
+test('2.0 A3: a smaller error is a range in 5 mm steps, never over 10 mm', () => {
+  for (const off of [-6, -9, 7]) {
+    const { a } = analyseSim({ saddleOffsetMm: off });
+    const r = TF.buildResults(a, PROFILE, 'hoods', null, 'metric').recommendation.current;
+    if (!r || r.id !== 'saddleHeight') continue; // small offsets may land in range
+    assert.ok(r.amount.hi <= 10 && r.amount.lo % 5 === 0 && r.amount.hi % 5 === 0, `${off} mm → ${r.amount.lo}–${r.amount.hi}`);
+  }
 });
 
 test('a correctly set saddle gets no saddle-height change', () => {
@@ -262,4 +268,238 @@ test('sub-frame accuracy: KOPS steady and knee extension exact across cadences',
     assert.equal(a.metrics.kops.confidence, 'high', `KOPS confidence at ${cadence} rpm`);
     near(a.metrics.kneeExtension.value, sim.truthSummary.kneeExtension, 1, `knee extension at ${cadence} rpm`);
   }
+});
+
+/* ==========================================================================
+   2.0 Part A
+   ========================================================================== */
+const B8 = { crankLength: 172.5, wheel: '700x28' };
+/** True KOPS exactly at crank level-forward: interpolate the simulator's truth across each 0° crossing. */
+function trueKopsAtLevel(sim) {
+  const tau = 2 * Math.PI, vals = [];
+  for (let i = 1; i < sim.truth.length; i++) {
+    const p0 = sim.truth[i - 1].phi, p1 = sim.truth[i].phi; // decreasing
+    const k = Math.floor(p0 / tau) * tau; // the multiple of 2π just below p0
+    if (p1 <= k && p0 > k) { const f = (p0 - k) / (p0 - p1); vals.push(sim.truth[i - 1].kops + (sim.truth[i].kops - sim.truth[i - 1].kops) * f); }
+  }
+  return TF.median(vals) + TF.CONFIG.targets.kopsKneeFrontOffsetMm;
+}
+const calOf = (marks, sim, extra) => Object.assign(TF.computeCalibration(marks, B8, sim.height, sim.width), extra || {});
+
+test('A1: eight marks give the bike its own numbers, exactly, in the bike frame', () => {
+  const sim = TF.simulateRider({});
+  const cal = calOf(sim.marks, sim);
+  assert.equal(cal.ok, true, JSON.stringify(cal.warnings));
+  for (const k of Object.keys(TF.BIKE_MEASURES)) near(cal.bikeMeasures[k], sim.bikeTruth[k], k === 'effectiveSeatAngle' ? 0.2 : 1, k);
+  assert.equal(TF.BIKE_MARKS.length, 8);
+});
+
+test('A1: bike measures are corrected for bike tilt (front low 3°)', () => {
+  const sim = TF.simulateRider({});
+  const t = -3 * Math.PI / 180, bb = sim.marks.bb;
+  // Rotate every mark about the bottom bracket in the image (y down): a front-low bike.
+  const rot = (p) => { const dx = p.x - bb.x, dy = p.y - bb.y; return { x: bb.x + dx * Math.cos(t) + dy * Math.sin(t), y: bb.y - dx * Math.sin(t) + dy * Math.cos(t) }; };
+  const tilted = Object.fromEntries(Object.entries(sim.marks).map(([k, p]) => [k, rot(p)]));
+  const cal = calOf(tilted, sim);
+  near(cal.tiltDeg, -3, 0.05, 'tilt');
+  for (const k of ['saddleHeight', 'saddleSetback', 'drop', 'reach']) near(cal.bikeMeasures[k], sim.bikeTruth[k], 1, k);
+});
+
+test('A1: six Beta 1 taps still calibrate, with no bike numbers', () => {
+  const sim = TF.simulateRider({});
+  const cal = calOf(sim.taps, sim);
+  assert.equal(cal.ok, true);
+  assert.equal(cal.bikeMeasures, null);
+});
+
+test('A1: distance hint from the wheel size against the silhouette', () => {
+  const sim = TF.simulateRider({});
+  const good = calOf(sim.marks, sim).distance;
+  assert.equal(good.distance, 'good');
+  assert.ok(good.metres > 2.2 && good.metres < 3.0, `about ${good.metres.toFixed(2)} m`);
+  assert.match(good.text, /^Distance is good \(about \d\.\d m\)\.$/);
+  const near1 = TF.simulateRider({ pxPerMm: 0.5, bbPx: { x: 600, y: 500 } });
+  assert.equal(calOf(near1.marks, near1).distance.distance, 'further');
+  const far1 = TF.simulateRider({ pxPerMm: 0.26 });
+  assert.equal(calOf(far1.marks, far1).distance.distance, 'closer');
+  const off = TF.simulateRider({ bbPx: { x: 820, y: 540 } });
+  assert.equal(calOf(off.marks, off).distance.centre, 'right');
+});
+
+test('A1: compareMarks reports the saddle change, and when the camera moved', () => {
+  const a = TF.simulateRider({}), b = TF.simulateRider({ saddleOffsetMm: 9 });
+  const c = TF.compareMarks(calOf(a.marks, a), calOf(b.marks, b));
+  assert.equal(c.cameraMoved, false);
+  near(c.changes.saddleHeight, 9, 1, 'saddle height change');
+  near(c.changes.drop, 9 * Math.sin(73.5 * Math.PI / 180), 1, 'drop follows the saddle up the seat tube');
+  const moved = TF.simulateRider({ saddleOffsetMm: 9, bbPx: { x: 600, y: 540 } });
+  const c2 = TF.compareMarks(calOf(a.marks, a), calOf(moved.marks, moved));
+  assert.equal(c2.cameraMoved, true);
+  near(c2.changes.saddleHeight, 9, 1.5, 'measured change still right when the camera moved');
+});
+
+test('A2: the pedal is followed from the ride alone (empty-bike marks)', () => {
+  for (const cadence of [78, 90]) {
+    const sim = TF.simulateRider({ cadence, seconds: 12 });
+    const cal = calOf(sim.marks, sim, { markedWithRider: false });
+    const a = TF.analyseClip({ width: sim.width, height: sim.height, frames: sim.frames, calibration: cal });
+    assert.equal(a.phaseSource, 'crank');
+    assert.equal(cal.spindleFit.ok, true);
+    assert.equal(cal.spindleFit.source, 'fit');
+    near(cal.footSpindle.a, sim.footSpindleTruth.a, 0.05, 'a (foot lengths)');
+    near(cal.footSpindle.b, sim.footSpindleTruth.b, 0.05, 'b (foot lengths)');
+    near(a.metrics.kops.value, trueKopsAtLevel(sim), 5, `KOPS at ${cadence} rpm`);
+  }
+});
+
+test('A2: a spindle mark made with the rider on starts and steadies the fit', () => {
+  const sim = TF.simulateRider({});
+  const cal = calOf(sim.marksWithRider, sim, { markedWithRider: true, calT: sim.calT });
+  const a = TF.analyseClip({ width: sim.width, height: sim.height, frames: sim.frames, calibration: cal });
+  assert.equal(cal.spindleFit.source, 'fit+mark');
+  near(cal.footSpindle.a, sim.footSpindleTruth.a, 0.05, 'a');
+  near(cal.footSpindle.b, sim.footSpindleTruth.b, 0.05, 'b');
+  assert.equal(a.metrics.kops.confidence, 'high');
+});
+
+test('A2: without a mark, the fit starts from the pedal-forward frame and converges', () => {
+  const sim = TF.simulateRider({});
+  const sm = TF.smoothSide(sim.frames, 'left', sim.width, sim.height);
+  const crankPx = TF.dist(sim.marks.bb, sim.marks.spindle);
+  const fit = TF.fitFootSpindle(sm.map((f) => ({ heel: f.j.heel, toe: f.j.toe })), sim.marks.bb, crankPx, { facing: 1 });
+  assert.equal(fit.ok, true);
+  near(fit.rel.a, sim.footSpindleTruth.a, 0.05, 'a');
+  near(fit.rel.b, sim.footSpindleTruth.b, 0.05, 'b');
+  assert.ok(fit.residual < 0.03, `residual ${(fit.residual * 100).toFixed(1)}%`);
+});
+
+test('A2: falls back cleanly to the foot path when heel and toe are hidden', () => {
+  const sim = TF.simulateRider({});
+  const frames = sim.frames.map((f) => { const lm = f.lm.map((p) => p.slice()); for (const j of ['heel', 'toe']) lm[TF.LM.left[j]][2] = 0.05; return { t: f.t, lm }; });
+  const cal = calOf(sim.marks, sim, { markedWithRider: false });
+  const a = TF.analyseClip({ width: sim.width, height: sim.height, frames, calibration: cal });
+  assert.equal(cal.spindleFit.ok, false);
+  assert.equal(cal.footSpindle, null);
+  assert.equal(a.phaseSource, 'foot');
+  assert.equal(a.metrics.kops.confidence, 'none');
+  assert.ok(a.notes.length, 'a note says why');
+});
+
+test('A2: a stored relation is reused, so a session reads the same every time', () => {
+  const sim = TF.simulateRider({});
+  const cal = calOf(sim.marks, sim, { markedWithRider: false });
+  const a1 = TF.analyseClip({ width: sim.width, height: sim.height, frames: sim.frames, calibration: cal });
+  const stored = JSON.parse(JSON.stringify(cal));
+  const a2 = TF.analyseClip({ width: sim.width, height: sim.height, frames: sim.frames, calibration: stored });
+  assert.equal(a2.metrics.kops.value, a1.metrics.kops.value);
+});
+
+/* A3: history. Build a history entry from a simulated session with its marks. */
+function sessionAt(offset, history) {
+  const sim = TF.simulateRider({ saddleOffsetMm: offset });
+  const cal = calOf(sim.marks, sim, { markedWithRider: false });
+  const a = TF.analyseClip({ width: sim.width, height: sim.height, frames: sim.frames, calibration: cal });
+  const res = TF.buildResults(a, PROFILE, 'hoods', null, 'metric', { history: history || [], bikeMeasures: cal.bikeMeasures });
+  return { res, entry: TF.historyEntry(res, cal.bikeMeasures, new Date().toISOString()) };
+}
+
+test('A3: suggestion made, still low → "One more step", with the measured change', () => {
+  const s1 = sessionAt(-25);
+  assert.equal(s1.res.recommendation.current.text, 'Raise the saddle 10 mm, then retest.');
+  const s2 = sessionAt(-15, [s1.entry]);
+  const r = s2.res.recommendation.current;
+  assert.equal(r.history.status, 'progress');
+  assert.match(r.text, /^One more step: raise the saddle (\d+–)?\d+ mm, then retest\.$/);
+  assert.match(r.why, /^Your knee extension went from \d+° to \d+° after raising the saddle 10 mm, and is still below the target range of 140–150°\.$/);
+});
+
+test('A3: suggestion not made → says so; does not present the advice as new', () => {
+  const s1 = sessionAt(-25);
+  const s2 = sessionAt(-25, [s1.entry]);
+  const r = s2.res.recommendation.current;
+  assert.equal(r.history.status, 'notMade');
+  assert.match(r.text, /^Still to do: raise the saddle 10 mm, then retest\.$/);
+  assert.match(r.why, /^The marks show the saddle height hasn't changed since your last session/);
+});
+
+test('A3: the other way → says what the marks show', () => {
+  const s1 = sessionAt(-15);
+  const s2 = sessionAt(-21, [s1.entry]);
+  const r = s2.res.recommendation.current;
+  assert.equal(r.history.status, 'different');
+  assert.match(r.why, /^The marks show the saddle was lowered 6 mm since your last session; the suggestion was to raise the saddle 10 mm\./);
+});
+
+test('A3: three sessions out of range despite changes → see a professional', () => {
+  // The saddle was raised 10 mm twice (measured), yet the knee is still low: a rider the advice is not helping.
+  const now = sessionAt(-25);
+  const S = now.entry.bikeMeasures.saddleHeight;
+  const raise10 = { id: 'saddleHeight', metric: 'kneeExtension', direction: 1, amount: { lo: 10, hi: 10 } };
+  const h1 = { current: raise10, metrics: { kneeExtension: 134 }, bikeMeasures: Object.assign({}, now.entry.bikeMeasures, { saddleHeight: S - 20 }) };
+  const h2 = { current: raise10, metrics: { kneeExtension: 135 }, bikeMeasures: Object.assign({}, now.entry.bikeMeasures, { saddleHeight: S - 10 }) };
+  const r = sessionAt(-25, [h1, h2]).res.recommendation.current;
+  assert.equal(r.id, 'seePro', JSON.stringify(r));
+  assert.equal(r.text, 'See a professional fitter before changing the saddle height again.');
+  assert.match(r.why, /below the target range for 3 sessions in a row, even though the saddle was raised each time \(10 mm, then 10 mm\)/);
+  // Only two sessions: still advice, not a referral.
+  assert.equal(sessionAt(-25, [h2]).res.recommendation.current.id, 'saddleHeight');
+  // A round where the change was not made breaks the chain.
+  const h1b = Object.assign({}, h1, { bikeMeasures: Object.assign({}, h1.bikeMeasures, { saddleHeight: S - 10 }) });
+  assert.equal(sessionAt(-25, [h1b, h2]).res.recommendation.current.id, 'saddleHeight');
+});
+
+test('A3: without marks on both sessions the advice is unchanged', () => {
+  const s1 = sessionAt(-25);
+  const entry = Object.assign({}, s1.entry, { bikeMeasures: null });
+  const s2 = sessionAt(-25, [entry]);
+  assert.equal(s2.res.recommendation.current.text, 'Raise the saddle 10 mm, then retest.');
+  assert.equal(s2.res.recommendation.current.history, undefined);
+});
+
+test('A4: riderPresent — the simulated rider yes, an empty frame no, a person beside the bike no', () => {
+  const sim = TF.simulateRider({});
+  const f = sim.frames[10].lm;
+  assert.equal(TF.riderPresent(f), true);
+  assert.equal(TF.riderPresent(f, sim.marks, sim.width, sim.height), true);
+  assert.equal(TF.riderPresent(null, sim.marks, sim.width, sim.height), false);
+  // Someone standing in front of the bike: hip ahead of the front axle.
+  const beside = f.map((p) => [p[0] + 0.45, p[1], p[2]]);
+  assert.equal(TF.riderPresent(beside, sim.marks, sim.width, sim.height), false);
+  // Joints barely seen: not present.
+  const faint = f.map((p) => [p[0], p[1], 0.2]);
+  assert.equal(TF.riderPresent(faint), false);
+});
+
+test('A4: head and feet cut off are reported; feet cut is a retake, head cut a warning', () => {
+  const sim = TF.simulateRider({ seconds: 10 });
+  assert.deepEqual([TF.framingCheck(sim.frames[0].lm).headCut, TF.framingCheck(sim.frames[0].lm).feetCut], [false, false]);
+  const up = (dy) => sim.frames.map((f) => ({ t: f.t, lm: f.lm.map((p) => [p[0], p[1] + dy, p[2]]) }));
+  const headCut = up(-0.1); // everything 10% higher: the nose leaves the top
+  assert.equal(TF.framingCheck(headCut[0].lm).headCut, true);
+  const qh = TF.captureQuality(headCut, 14);
+  if (qh.ok) assert.equal(qh.warnings[0].code, 'headCut');
+  const feetCut = up(0.18); // everything lower: the feet leave the bottom at the bottom of each stroke
+  const low = feetCut.reduce((b, f) => (f.lm[TF.LM.left.toe][1] > b.lm[TF.LM.left.toe][1] ? f : b));
+  assert.equal(TF.framingCheck(low.lm).feetCut, true);
+  const qf = TF.captureQuality(feetCut, 14);
+  assert.equal(qf.ok, false);
+  assert.equal(qf.reason, 'feetCut');
+  assert.match(qf.speech, /^Your feet were cut off at the bottom of the frame on \d+ percent of the frames\. The camera needs to be further back or a little higher\.$/);
+});
+
+test('A5: schema 2 — new sessions carry the new fields; schema 1 files move forward', () => {
+  const r = TF.newRider('T'); const s = TF.newSession(r);
+  for (const k of ['marks', 'bikeMeasures', 'markedWithRider', 'secondClip']) assert.ok(k in s, k);
+  assert.deepEqual(s.replies, []);
+  assert.equal(TF.newFitFile().schema, 2);
+  const old = { format: 'tango-fit', schema: 1, riders: [{ id: 'r', name: 'X', sessions: [{ id: 's', clips: [{ calibration: { taps: { bb: { x: 1, y: 2 } } } }] }, { id: 's2', clips: [] }] }] };
+  const m = TF.migrateFile(old);
+  assert.equal(m.schema, 2);
+  assert.deepEqual(m.riders[0].sessions[0].marks, { bb: { x: 1, y: 2 } });
+  assert.equal(m.riders[0].sessions[0].markedWithRider, true);
+  assert.equal(m.riders[0].sessions[0].bikeMeasures, null);
+  assert.equal(m.riders[0].sessions[1].marks, null);
+  assert.deepEqual(m.riders[0].sessions[1].replies, []);
+  const newer = TF.migrateFile({ format: 'tango-fit', schema: 9, riders: [] });
+  assert.equal(newer.schema, 9, 'a newer file keeps its schema');
 });

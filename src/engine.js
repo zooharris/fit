@@ -24,7 +24,7 @@ const TF_CONFIG = {
     version: '0.1.0-beta.1',
     fileExtension: '.tango',
     fileFormat: 'tango-fit',
-    schemaVersion: 1,
+    schemaVersion: 2,             // 2.0: bike marks, bike measures, second clip, reply log
   },
 
   // Minimum browser feature set; below this a compatibility screen explains why.
@@ -88,6 +88,22 @@ const TF_CONFIG = {
     cadenceHigh: 100,
   },
 
+  // Placement and distance (2.0 A1/A4). The silhouette the rider lines the bike up with, and the lens model
+  // used to turn the wheel's size in the frame into a distance estimate ("about 2.6 m").
+  camera: {
+    hfovDeg: 69,                  // typical phone main camera, landscape; the estimate is always worded "about"
+    silhouette: { wheelFrac: 0.20, groundFrac: 0.84, centreXFrac: 0.5 },
+    distanceTolerance: 0.15,      // wheel size within ±15% of the silhouette's counts as "good"
+    centreTolerance: 0.08,        // bike centre within 8% of frame width of the silhouette's centre
+    cameraMovedPx: 15,            // axles or bottom bracket moved more than this (at 720p, scaled) → camera moved
+  },
+
+  presence: {
+    checkFps: 2,                  // rider check during placement and marking (wording only, never a gate)
+    cutEdge: 0.02,                // head or feet within 2% of the frame edge (or outside it) count as cut off
+    cutFraction: 0.2,             // in a recording: cut on more than 20% of frames → say so
+  },
+
   calibration: {
     scaleAgreementMax: 0.04,      // crank- and wheel-based scales must agree within 4%
     squareRatioMin: 0.97,         // wheel width/height below this → camera not square (0.97 ≈ a 14° turn; the brief's
@@ -106,6 +122,13 @@ const TF_CONFIG = {
     medianWindow: 3,              // landmark smoothing (frames); 5 clips the knee's peak by ~2° at 30 fps
     seekTimeoutMs: 4000,
     segmentPercentile: 0.9,       // segment lengths: 90th percentile (foreshortening only shortens)
+    // Following the pedal (2.0 A2): the spindle's fixed place in the foot's own frame is fitted so that it rides
+    // on the crank circle. Rejected (foot-path fallback) when the RMS distance off the circle exceeds this share
+    // of the crank length.
+    spindleFitMaxResidual: 0.06,
+    spindleFitIterations: 30,
+    spindleMarkWeightFrames: 10,  // a spindle mark made with the rider on counts as this many frames
+    spindleFitMinFrames: 30,
   },
 
   confidence: {
@@ -150,7 +173,9 @@ const TF_CONFIG = {
     // …and at its centre; the two give the low and high ends of the suggested range.
     saddleStepMm: 5,              // brief 8.3: saddle changes round to 5 mm
     stemStepMm: 10,
-    maxSaddleChangeMm: 20,        // larger corrections are made in steps, retesting between
+    maxSaddleChangeMm: 10,        // 2.0 A3: one step is at most 10 mm; a capped step is exactly 10 mm, retest between
+    madeToleranceMm: 3,           // a retest's marks within 3 mm of the suggestion count as "made"; under 3 mm, "not made"
+    roundsBeforeProfessional: 3,  // same measurement out of range the same way for this many sessions despite changes
     searchRangeMm: 80,
   },
 
@@ -370,6 +395,7 @@ function fmtSignedMm(mm, units) {
   return sign + fmtLength(Math.abs(r), units, units === 'imperial' ? 'adjust' : 'length');
 }
 function fmtRange(lo, hi, units) {
+  if (lo === hi) return fmtLength(lo, units, 'adjust');
   if (units === 'imperial') return `${inchFraction(lo, 16)}–${inchFraction(hi, 16)} in`;
   return `${Math.round(lo)}–${Math.round(hi)} mm`;
 }
@@ -519,18 +545,37 @@ function toImage(w, origin, facing, pxPerMm) {
    Calibration (brief section 5)
    Taps, in image pixels: rearAxle, frontAxle, tyreTop (top of rear tyre),
    tyreBack (back edge of rear tyre), bb, spindle (with the crank level).
+   2.0 adds saddleNose and barTop (BIKE_MARKS), all visible with or without a rider
+   in the saddle, and derives the bike's own numbers from them (bikeMeasures).
    ========================================================================== */
+const BIKE_MARKS = [
+  { key: 'rearAxle', label: 'Rear axle', help: 'The centre of the rear wheel.' },
+  { key: 'tyreTop', label: 'Top of the rear tyre', help: 'The highest point of the rear tyre, directly above the axle.' },
+  { key: 'tyreBack', label: 'Back of the rear tyre', help: 'The rearmost point of the rear tyre, level with the axle.' },
+  { key: 'frontAxle', label: 'Front axle', help: 'The centre of the front wheel.' },
+  { key: 'bb', label: 'Bottom bracket', help: 'The centre of the crank, where the crank arms meet the frame.' },
+  { key: 'spindle', label: 'Pedal spindle', help: 'The centre of the near pedal, with the crank level and pointing forward.' },
+  { key: 'saddleNose', label: 'Saddle nose', help: 'The very tip of the saddle, at the front.' },
+  { key: 'barTop', label: 'Top of the hood', help: 'Where your hand rests on top of the hood (on a flat bar, the top of the grip; on aero bars, the top of the pad).' },
+];
+const BIKE_MEASURES = {
+  saddleHeight: { label: 'Saddle height', note: 'to the saddle nose', about: 'From the centre of the bottom bracket to the saddle nose, in a straight line.' },
+  saddleSetback: { label: 'Saddle setback', note: 'saddle nose behind the pedals', about: 'How far the saddle nose sits behind the bottom bracket, measured level.' },
+  drop: { label: 'Saddle-to-bar drop', note: 'bars below the saddle nose', about: 'How far the hood tops sit below the saddle nose. Negative means the bars are higher.' },
+  reach: { label: 'Reach to the hoods', note: 'saddle nose to the hoods', about: 'The level distance from the saddle nose forward to the hood tops.' },
+  effectiveSeatAngle: { label: 'Effective seat angle', note: 'to the saddle nose', about: 'The angle of the line from the bottom bracket up to the saddle nose, measured from level behind the bike.' },
+};
 function wheelOuterDiameter(bike) {
   if (bike.wheel === 'custom') return Number(bike.wheelDiameterMm) || NaN;
   const w = WHEELS[bike.wheel] || WHEELS[TF_CONFIG.calibration.defaultWheel];
   return w.bsd + 2 * w.tyre;
 }
 
-function computeCalibration(taps, bike, frameH) {
+function computeCalibration(taps, bike, frameH, frameW) {
   const C = TF_CONFIG.calibration;
   const crank = Number(bike.crankLength);
   const wheelD = wheelOuterDiameter(bike);
-  const res = { taps, ok: true, warnings: [] };
+  const res = { taps, ok: true, warnings: [], frameH: frameH || null, frameW: frameW || (frameH ? frameH * 16 / 9 : null) };
 
   // Scale 1: vertical wheel radius (unaffected by the camera turning left/right).
   const rv = Math.abs(taps.rearAxle.y - taps.tyreTop.y);
@@ -562,7 +607,76 @@ function computeCalibration(taps, bike, frameH) {
     res.warnings.push({ code: 'tilt', text: `The bike is tilted ${Math.abs(res.tiltDeg).toFixed(1)}° (${res.tiltDeg > 0 ? 'front high' : 'front low'}). The back angle is corrected for it, but levelling the bike is better.` });
   }
   res.ok = res.warnings.every((w) => w.code === 'tilt');
+  res.bikeMeasures = bikeMeasuresFrom(res);
+  res.distance = res.frameW ? bikeFramingCheck(taps, res.frameW, res.frameH, wheelD) : null;
   return res;
+}
+
+/** A mark in the bike's own frame, in mm: origin at the bottom bracket, +x towards the front axle along the
+    axle line, +y up. Using the axle line as level removes both bike tilt and camera roll. */
+function toBikeFrame(p, cal) {
+  const w = toWorld(p, cal.taps.bb, cal.facing, cal.pxPerMm);
+  const t = (cal.tiltDeg || 0) / DEG;
+  return { x: w.x * Math.cos(t) + w.y * Math.sin(t), y: -w.x * Math.sin(t) + w.y * Math.cos(t) };
+}
+
+/** The bike's own numbers from the eight marks (null without the saddle nose and bar top). */
+function bikeMeasuresFrom(cal) {
+  const t = cal.taps;
+  if (!t || !t.saddleNose || !t.barTop || !t.bb || !finite(cal.pxPerMm)) return null;
+  const nose = toBikeFrame(t.saddleNose, cal), bar = toBikeFrame(t.barTop, cal);
+  return {
+    saddleHeight: Math.hypot(nose.x, nose.y),
+    saddleSetback: -nose.x,
+    drop: nose.y - bar.y,
+    reach: bar.x - nose.x,
+    effectiveSeatAngle: Math.atan2(nose.y, -nose.x) * DEG,
+  };
+}
+
+/**
+ * bikeFramingCheck — where the bike sits in the frame compared with the placement silhouette, from the
+ * marks alone (no rider needed). Returns the distance hint ('closer' | 'further' | 'good') with an estimate
+ * in metres ("about"), and a centring hint ('left' | 'right' | 'good': which way to turn or move the phone).
+ */
+function bikeFramingCheck(taps, frameW, frameH, wheelDiameterMm) {
+  const K = TF_CONFIG.camera, S = K.silhouette;
+  if (!taps || !taps.rearAxle || !taps.tyreTop || !frameW) return null;
+  const rPx = Math.abs(taps.rearAxle.y - taps.tyreTop.y);
+  const wheelFrac = (2 * rPx) / frameW;
+  const ratio = wheelFrac / S.wheelFrac;
+  const metres = wheelDiameterMm ? (wheelDiameterMm / 1000) / (2 * Math.tan((K.hfovDeg / DEG) / 2) * wheelFrac) : NaN;
+  const distance = ratio > 1 + K.distanceTolerance ? 'further' : ratio < 1 - K.distanceTolerance ? 'closer' : 'good';
+  let centre = 'good', centreOffset = NaN;
+  if (taps.frontAxle) {
+    const cx = (taps.rearAxle.x + taps.frontAxle.x) / 2;
+    centreOffset = cx / frameW - S.centreXFrac;
+    if (centreOffset > K.centreTolerance) centre = 'right';
+    else if (centreOffset < -K.centreTolerance) centre = 'left';
+  }
+  const groundFrac = frameH ? (Math.max(taps.rearAxle.y, (taps.frontAxle || taps.rearAxle).y) + rPx) / frameH : NaN;
+  const m = finite(metres) ? `about ${metres.toFixed(1)} m` : '';
+  const text = distance === 'further' ? `Move the phone a little further back${m ? ` (it is ${m} away)` : ''}.`
+    : distance === 'closer' ? `Move the phone a little closer${m ? ` (it is ${m} away)` : ''}.`
+    : `Distance is good${m ? ` (${m})` : ''}.`;
+  return { distance, metres, wheelFrac, ratio, centre, centreOffset, groundFrac, text,
+    centreText: centre === 'good' ? '' : `The bike is ${centre === 'right' ? 'right' : 'left'} of centre: move the phone a little to the ${centre}.` };
+}
+
+/** Changes in the bike's numbers between two calibrations, and whether the camera itself moved. */
+function compareMarks(prev, next) {
+  if (!prev || !next || !prev.taps || !next.taps) return null;
+  const keys = ['rearAxle', 'frontAxle', 'bb'];
+  let shift = 0;
+  for (const k of keys) if (prev.taps[k] && next.taps[k]) shift = Math.max(shift, dist(prev.taps[k], next.taps[k]));
+  const scaleBy = (next.frameH || 720) / 720;
+  const cameraMoved = shift > TF_CONFIG.camera.cameraMovedPx * scaleBy;
+  let changes = null;
+  if (prev.bikeMeasures && next.bikeMeasures) {
+    changes = {};
+    for (const k of Object.keys(BIKE_MEASURES)) changes[k] = next.bikeMeasures[k] - prev.bikeMeasures[k];
+  }
+  return { changes, cameraMoved, shiftPx: shift };
 }
 
 /* Foot-to-spindle relationship: the spindle's position in the foot's own frame, in foot lengths.
@@ -579,6 +693,88 @@ function spindleInFoot(heel, toe, spindle) {
 function spindleFromFoot(heel, toe, rel) {
   const f = footFrame(heel, toe);
   return add(f.o, add(scale(f.ex, rel.a * f.len), scale(f.ey, rel.b * f.len)));
+}
+
+/**
+ * fitFootSpindle — find where the pedal spindle sits in the foot's own frame (rel = {a, b}, in foot lengths)
+ * from a ride, with no tap on the moving rider. The spindle is a point fixed to the foot that must stay on the
+ * crank circle (centre bb, radius crankPx) all the way round; that point is unique, because a foot that only
+ * translated round the circle would carry any other point round a circle with a different centre.
+ *
+ * Least squares on r_i = |spindle_i(a, b) − bb| − crankPx over every frame with heel and toe seen, solved by
+ * damped Gauss–Newton (two unknowns), then refitted once without frames more than 3× the median residual off.
+ *   frames: [{ heel, toe }] in px (null entries skipped)
+ *   opts.mark: { heel, toe, spindle } — a spindle mark made with the rider on the bike: the exact relation
+ *              at one moment; used as the starting point and as one equation weighted like several frames.
+ *   opts.facing: +1 / −1, used to start from the pedal-forward frame when there is no mark.
+ * Returns { ok, rel, residual (RMS, share of crank length), frames, source: 'fit' | 'fit+mark', reason }.
+ */
+function fitFootSpindle(frames, bb, crankPx, opts) {
+  const A = TF_CONFIG.analysis, o = opts || {};
+  const pts = frames.filter((f) => f && f.heel && f.toe && dist(f.heel, f.toe) > 1);
+  if (pts.length < A.spindleFitMinFrames || !bb || !(crankPx > 0)) return { ok: false, reason: 'Not enough frames with the foot seen.', frames: pts.length };
+  const mark = o.mark && o.mark.heel && o.mark.toe && o.mark.spindle ? o.mark : null;
+  // Starting point.
+  let rel;
+  if (mark) rel = spindleInFoot(mark.heel, mark.toe, mark.spindle);
+  else {
+    // The frame where the toe is furthest forward of the bottom bracket: the crank is near level-forward there.
+    const facing = o.facing || 1;
+    let best = null, bestV = -Infinity;
+    for (const f of pts) { const v = (f.toe.x - bb.x) * facing; if (v > bestV) { bestV = v; best = f; } }
+    rel = spindleInFoot(best.heel, best.toe, { x: bb.x + facing * crankPx, y: bb.y });
+  }
+  const wMark = mark ? Math.sqrt(A.spindleMarkWeightFrames) : 0;
+  const solve = (use, start) => {
+    let a = start.a, b = start.b, lambda = 1e-3, cost = Infinity;
+    const evalAt = (aa, bb2) => {
+      let c = 0; const rows = [];
+      for (const f of use) {
+        const fr = footFrame(f.heel, f.toe);
+        const q = add(fr.o, add(scale(fr.ex, aa * fr.len), scale(fr.ey, bb2 * fr.len)));
+        const d = sub(q, bb), L = Math.hypot(d.x, d.y) || 1e-9, u = { x: d.x / L, y: d.y / L };
+        const r = L - crankPx;
+        rows.push({ r, ja: dot(u, fr.ex) * fr.len, jb: dot(u, fr.ey) * fr.len });
+        c += r * r;
+      }
+      if (mark) {
+        const fr = footFrame(mark.heel, mark.toe);
+        const q = add(fr.o, add(scale(fr.ex, aa * fr.len), scale(fr.ey, bb2 * fr.len)));
+        const e = sub(q, mark.spindle);
+        rows.push({ r: wMark * e.x, ja: wMark * fr.ex.x * fr.len, jb: wMark * fr.ey.x * fr.len });
+        rows.push({ r: wMark * e.y, ja: wMark * fr.ex.y * fr.len, jb: wMark * fr.ey.y * fr.len });
+        c += wMark * wMark * (e.x * e.x + e.y * e.y);
+      }
+      return { c, rows };
+    };
+    let cur = evalAt(a, b); cost = cur.c;
+    for (let it = 0; it < A.spindleFitIterations; it++) {
+      let haa = 0, hab = 0, hbb = 0, ga = 0, gb = 0;
+      for (const row of cur.rows) { haa += row.ja * row.ja; hab += row.ja * row.jb; hbb += row.jb * row.jb; ga += row.ja * row.r; gb += row.jb * row.r; }
+      let accepted = false;
+      for (let k = 0; k < 8 && !accepted; k++) {
+        const d11 = haa * (1 + lambda), d22 = hbb * (1 + lambda), det = d11 * d22 - hab * hab;
+        if (!det) break;
+        const da = -(d22 * ga - hab * gb) / det, db = -(d11 * gb - hab * ga) / det;
+        const next = evalAt(a + da, b + db);
+        if (next.c < cost) { a += da; b += db; cur = next; const gain = cost - next.c; cost = next.c; lambda = Math.max(1e-7, lambda / 3); accepted = true; if (gain < 1e-10 * (1 + cost)) it = A.spindleFitIterations; }
+        else lambda *= 10;
+      }
+      if (!accepted) break;
+    }
+    const n = use.length;
+    const rs = cur.rows.slice(0, n).map((x) => Math.abs(x.r));
+    return { rel: { a, b }, rs, rms: Math.sqrt(rs.reduce((t, x) => t + x * x, 0) / n) };
+  };
+  let fit = solve(pts, rel);
+  // One robust pass: drop frames well off the circle (tracking slips) and refit.
+  const med = median(fit.rs);
+  const keep = pts.filter((_, i) => fit.rs[i] <= Math.max(3 * med, crankPx * 0.02));
+  if (keep.length >= A.spindleFitMinFrames && keep.length < pts.length) fit = solve(keep, fit.rel);
+  const residual = fit.rms / crankPx;
+  const ok = residual <= A.spindleFitMaxResidual;
+  return { ok, rel: fit.rel, residual, frames: keep.length, source: mark ? 'fit+mark' : 'fit',
+    reason: ok ? '' : `The pedal could not be followed reliably (the foot track was ${Math.round(residual * 100)}% of the crank length off the crank circle).` };
 }
 
 /* ==========================================================================
@@ -657,9 +853,39 @@ function framingCheck(lmFrame, side) {
     if (p[2] < vt || !inFrame) missing.push(j);
   }
   const meanVis = vsum / REQUIRED_JOINTS.length;
-  return { ok: missing.length === 0, missing, meanVis, side };
+  const cuts = framingCuts(lmFrame, side);
+  return { ok: missing.length === 0, missing, meanVis, side, headCut: cuts.headCut, feetCut: cuts.feetCut };
 }
 function sumVis(lm, side) { return JOINTS.reduce((s, j) => s + lm[LM[side][j]][2], 0); }
+
+/** Head (nose or shoulder) in the top edge band or above the frame; feet (heel or toe) in the bottom band or below. */
+function framingCuts(lmFrame, side) {
+  if (!lmFrame) return { headCut: false, feetCut: false };
+  const e = TF_CONFIG.presence.cutEdge, idx = LM[side || 'left'];
+  const y = (i) => lmFrame[i][1];
+  const headCut = y(LM.nose) < e || y(idx.shoulder) < e;
+  const feetCut = y(idx.heel) > 1 - e || y(idx.toe) > 1 - e;
+  return { headCut, feetCut };
+}
+
+/**
+ * riderPresent — is someone on the bike? True when hip, knee and shoulder are seen; with marks, the hip must
+ * also sit over the bike (between the axles, above the bottom bracket). Used only to choose the words the app
+ * says during set-up; never to block a step.
+ */
+function riderPresent(lmFrame, marks, W, H) {
+  if (!lmFrame) return false;
+  const vt = TF_CONFIG.framing.visibilityThreshold;
+  const side = sumVis(lmFrame, 'left') >= sumVis(lmFrame, 'right') ? 'left' : 'right';
+  const idx = LM[side];
+  if (!['hip', 'knee', 'shoulder'].every((j) => lmFrame[idx[j]][2] >= vt)) return false;
+  if (marks && marks.rearAxle && marks.frontAxle && marks.bb && W && H) {
+    const hx = lmFrame[idx.hip][0] * W, hy = lmFrame[idx.hip][1] * H;
+    const x0 = Math.min(marks.rearAxle.x, marks.frontAxle.x), x1 = Math.max(marks.rearAxle.x, marks.frontAxle.x);
+    if (hx < x0 || hx > x1 || hy > marks.bb.y) return false;
+  }
+  return true;
+}
 
 const JOINT_WORDS = { shoulder: 'shoulder', elbow: 'elbow', wrist: 'hand', index: 'hand', hip: 'hip', knee: 'knee', ankle: 'ankle', heel: 'heel', toe: 'foot' };
 function describeMissing(missing) {
@@ -683,6 +909,16 @@ function captureQuality(liveFrames, strokes) {
     for (const m of c.missing) counts[m] = (counts[m] || 0) + 1;
   }
   const fraction = good / liveFrames.length;
+  // 2.0 A4: feet cut off at the bottom spoil the ankle and pedal measurements, so that is a retake (and its
+  // message says what to do, ahead of "lost sight of your foot"); a head cut off at the top does not affect any
+  // measurement, so it is a warning for next time.
+  const P = TF_CONFIG.presence;
+  let head = 0, feet = 0, seen = 0;
+  for (const f of liveFrames) { if (!f.lm) continue; seen++; const c = framingCuts(f.lm, side); if (c.headCut) head++; if (c.feetCut) feet++; }
+  if (seen && feet / seen > P.cutFraction) {
+    const pct = Math.round(feet / seen * 100);
+    return { ok: false, reason: 'feetCut', fraction, speech: `Your feet were cut off at the bottom of the frame on ${pct} percent of the frames. The camera needs to be further back or a little higher.`, text: `Feet cut off at the bottom on ${pct}% of frames: move the camera further back or a little higher.` };
+  }
   if (fraction < F.goodCaptureFraction) {
     const worst = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
     const pct = Math.round((worst ? worst[1] : liveFrames.length - good) / liveFrames.length * 100);
@@ -692,7 +928,9 @@ function captureQuality(liveFrames, strokes) {
   if (strokes < T.minStrokes) {
     return { ok: false, reason: 'strokes', fraction, speech: `I only counted ${strokes} pedal strokes. I need at least ${T.minStrokes}.`, text: `Only ${strokes} pedal strokes recorded; at least ${T.minStrokes} are needed.` };
   }
-  return { ok: true, fraction, side, speech: 'Good capture.' };
+  const warnings = [];
+  if (seen && head / seen > P.cutFraction) warnings.push({ code: 'headCut', text: 'Your head was cut off at the top of the frame. It does not affect the measurements, but next time move the camera a little further back.' });
+  return { ok: true, fraction, side, warnings, speech: 'Good capture.' };
 }
 
 /** The live frame with the crank roughly level and forward, for the calibration taps. */
@@ -737,16 +975,26 @@ function analyseClip(clip, opts) {
   const sm = smoothSide(frames, side, W, H);
   result.side = side; result.facing = facing; result.calibration = cal;
 
-  // Spindle tracking: the foot-to-spindle relationship from the calibration frame.
-  let footRel = cal && cal.footSpindle ? cal.footSpindle : null;
-  if (cal && !footRel && cal.taps && cal.taps.spindle && finite(cal.calT)) {
-    const fi = nearestFrameIndex(sm, cal.calT);
-    const f = sm[fi];
-    if (f && f.j.heel && f.j.toe) footRel = spindleInFoot(f.j.heel, f.j.toe, cal.taps.spindle);
-  }
-  if (cal) cal.footSpindle = footRel;
+  // Spindle tracking (2.0 A2). A stored relation is reused as is, so a session reads the same every time it
+  // is opened. Otherwise the relation is fitted from the ride: the spindle mark was made on the bike with the
+  // crank level (empty saddle, or a rider holding still), so it gives the crank circle; when the rider was on
+  // the bike it also gives one exact foot-to-spindle moment, used to start and steady the fit.
   const bb = cal ? cal.taps.bb : null;
   const crankPx = cal ? dist(cal.taps.bb, cal.taps.spindle) : null;
+  let footRel = cal && cal.footSpindle ? cal.footSpindle : null;
+  if (cal && !footRel && cal.taps && cal.taps.spindle) {
+    let mark = null;
+    const withRider = cal.markedWithRider === true || (cal.markedWithRider === undefined && finite(cal.calT)); // Beta 1 taps: rider on
+    if (withRider && finite(cal.calT)) {
+      const f = sm[nearestFrameIndex(sm, cal.calT)];
+      if (f && f.j.heel && f.j.toe) mark = { heel: f.j.heel, toe: f.j.toe, spindle: cal.taps.spindle };
+    }
+    const fit = fitFootSpindle(sm.map((f) => ({ heel: f.j.heel, toe: f.j.toe })), bb, crankPx, { mark, facing });
+    cal.spindleFit = { ok: fit.ok, residual: fit.residual, frames: fit.frames, source: fit.source, reason: fit.reason };
+    if (fit.ok) footRel = fit.rel;
+    else result.notes.push(fit.reason || 'The pedal could not be followed; strokes were found from the foot path.');
+  }
+  if (cal) cal.footSpindle = footRel;
 
   // Per-frame crank angle (unwrapped, degrees; 0 = forward, −90 = bottom, decreasing as it turns).
   const phase = sm.map((f) => {
@@ -796,8 +1044,8 @@ function analyseClip(clip, opts) {
       }
     }
   } else {
-    // Without calibration: the foot's lowest points (largest image y).
-    const ys = sm.map((f) => (f.j.toe && f.j.heel ? (f.j.toe.y + f.j.heel.y) / 2 : NaN));
+    // Without the crank: the foot's lowest points (largest image y); the ankle stands in when heel and toe are hidden.
+    const ys = sm.map((f) => (f.j.toe && f.j.heel ? (f.j.toe.y + f.j.heel.y) / 2 : f.j.ankle ? f.j.ankle.y : NaN));
     const minGap = Math.max(3, Math.round(TF_CONFIG.triggers.minPeriodS / frameDt(sm)));
     const lo = quantile(ys, 0.1), hi = quantile(ys, 0.9);
     for (let i = 1; i < ys.length - 1; i++) {
@@ -1003,7 +1251,8 @@ function roundRange(a, b, step, max) {
   lo = Math.max(step, Math.floor(lo / step) * step);
   hi = Math.max(lo + step, Math.ceil(hi / step) * step);
   let capped = false;
-  if (hi > max) { hi = max; lo = Math.min(lo, max - step); capped = true; }
+  // 2.0 A3: a correction that reaches the cap is a single step of exactly the cap ("Raise the saddle 10 mm").
+  if (hi > max) { hi = max; lo = max; capped = true; }
   return { lo, hi, capped };
 }
 
@@ -1058,6 +1307,8 @@ function saddleSetbackChange(analysis, targetMm) {
  */
 function recommend(analysis, targets, opts) {
   const units = (opts && opts.units) || 'metric';
+  const history = (opts && opts.history) || [];
+  const bikeNow = (opts && opts.bikeMeasures) || (analysis.calibration && analysis.calibration.bikeMeasures) || null;
   const R = TF_CONFIG.recommend;
   const m = analysis.metrics;
   const usable = (name) => m[name] && finite(m[name].value) && (m[name].confidence === 'high' || m[name].confidence === 'medium');
@@ -1126,11 +1377,113 @@ function recommend(analysis, targets, opts) {
   const kf = classify(m.kneeFlexion && m.kneeFlexion.value, targets.kneeFlexion);
   if (kf.status === 'red' && kf.side === 'low' && ke.status === 'green') later.push({ id: 'crank', order: 7, text: 'Crank length (a parts change)', why: describeOut([['kneeFlexion', kf]], m, targets, units) });
 
+  // 2.0 A3: advice that stays put. Read each saddle step against the previous sessions' marks.
+  for (let i = 0; i < steps.length; i++) steps[i] = withHistory(steps[i], m, targets, history, bikeNow, units);
+
   steps.sort((a, b) => a.order - b.order);
   later.sort((a, b) => a.order - b.order);
   const current = steps[0] || null;
   return { current, queued: steps.slice(1), later, allSaddleGreen: !steps.length };
 }
+/* Which bike measure each saddle step changes, and the words for it. direction +1 = raise / move back. */
+const STEP_MEASURE = {
+  saddleHeight: { measure: 'saddleHeight', verbs: ['raising', 'lowering'], did: ['raised', 'lowered'], imper: ['raise the saddle', 'lower the saddle'], thing: 'saddle height', obj: 'the saddle' },
+  saddleSetback: { measure: 'saddleSetback', verbs: ['moving the saddle back', 'moving the saddle forward'], did: ['moved back', 'moved forward'], imper: ['move the saddle back', 'move the saddle forward'], thing: 'saddle position', obj: 'the saddle' },
+};
+
+/** One history entry from a session: what it recommended, what it measured, and its bike numbers. */
+function historyEntry(results, bikeMeasures, created) {
+  const cur = results && results.recommendation && results.recommendation.current;
+  const metrics = {};
+  for (const g of (results && results.gauges) || []) metrics[g.metric] = g.value;
+  return { created: created || null, current: cur ? { id: cur.id, metric: cur.metric, direction: cur.direction, amount: cur.amount } : null, metrics, bikeMeasures: bikeMeasures || null };
+}
+
+/**
+ * withHistory — rewrite a saddle step in the light of the sessions before it (history: oldest → newest, the
+ * last entry being the immediately previous session). Cases, judged from the marks:
+ *  - three sessions out of range the same way despite measured changes each time → stop, see a professional;
+ *  - the last suggestion was made and the measurement moved the right way but is still out → "One more step";
+ *  - the last suggestion was not made (bike within 3 mm) → say so, the suggestion still stands;
+ *  - something else was done (other direction, very different amount) or it did not help → say what the marks show.
+ * Without marks on both sessions the step is returned unchanged.
+ */
+function withHistory(step, m, targets, history, bikeNow, units) {
+  const map = STEP_MEASURE[step.id];
+  const prev = history.length ? history[history.length - 1] : null;
+  if (!map || !prev || !prev.current || prev.current.id !== step.id || !bikeNow || !prev.bikeMeasures) return step;
+  const R = TF_CONFIG.recommend, tol = R.madeToleranceMm;
+  const metric = step.metric, label = METRICS[metric].label;
+  const nowV = m[metric] && m[metric].value, prevV = prev.metrics && prev.metrics[metric];
+  const band = targets[metric];
+  const sideOf = (v) => classify(v, band);
+  const dir = prev.current.direction; // what was suggested last time
+  const k = dir > 0 ? 0 : 1;
+  const madeMm = Math.round(bikeNow[map.measure] - prev.bikeMeasures[map.measure]); // whole millimetres
+  const madeAbs = Math.abs(madeMm), madeDir = Math.sign(madeMm);
+  const amt = prev.current.amount;
+  const lo = amt ? amt.lo : R.saddleStepMm, hi = amt ? amt.hi : R.maxSaddleChangeMm;
+  const made = madeAbs >= tol && madeDir === dir && madeAbs >= lo - tol && madeAbs <= hi + tol;
+  const fmtV = (v) => fmtMetric(metric, v, units);
+  const changeWords = (d) => `${map.verbs[d > 0 ? 0 : 1]} ${step.id === 'saddleHeight' ? 'the saddle ' : ''}${fmtLength(Math.abs(d), units, 'adjust')}`;
+  const nowSide = sideOf(nowV);
+  const out = Object.assign({}, step, { history: { madeMm, previous: prevV, now: nowV } });
+
+  // Three rounds without success → a professional should look.
+  const N = R.roundsBeforeProfessional;
+  if (history.length >= N - 1) {
+    const chain = history.slice(-(N - 1));
+    const sameWay = chain.every((h) => h.current && h.current.id === step.id && h.current.direction === step.direction && finite(h.metrics[metric]) && sideOf(h.metrics[metric]).side === nowSide.side && sideOf(h.metrics[metric]).status !== 'green');
+    const all = [...chain.map((h) => h.bikeMeasures), bikeNow];
+    const deltas = [];
+    let changedEachTime = all.every(Boolean);
+    for (let i = 1; changedEachTime && i < all.length; i++) {
+      const d = Math.round(all[i][map.measure] - all[i - 1][map.measure]);
+      deltas.push(d);
+      if (!(Math.abs(d) >= tol && Math.sign(d) === chain[i - 1].current.direction)) changedEachTime = false;
+    }
+    if (sameWay && changedEachTime && nowSide.status !== 'green') {
+      return Object.assign(out, {
+        id: 'seePro', kind: 'stop', strength: 'stop', amount: null,
+        action: 'See a professional fitter',
+        text: `See a professional fitter before changing the ${map.thing} again.`,
+        why: `Your ${label.toLowerCase()} has been ${nowSide.side === 'low' ? 'below' : 'above'} the target range for ${N} sessions in a row, even though ${map.obj} was ${map.did[k]} each time (${deltas.map((d) => fmtLength(Math.abs(d), units, 'adjust')).join(', then ')}). The app's suggestions aren't working for you, so a professional should look before you change anything else.`,
+        note: '', howTo: '', history: Object.assign(out.history, { status: 'professional' }),
+      });
+    }
+  }
+
+  if (madeAbs < tol) {
+    // Not made: say so instead of presenting the same advice as new.
+    const now = fmtLength(bikeNow[map.measure], units, 'length');
+    return Object.assign(out, {
+      text: `Still to do: ${step.text.charAt(0).toLowerCase()}${step.text.slice(1)}`,
+      why: `The marks show the ${map.thing} hasn't changed since your last session (${step.id === 'saddleHeight' ? `${now} to the saddle nose` : `setback ${now}`}), so last time's suggestion still stands. ${step.why}`,
+      history: Object.assign(out.history, { status: 'notMade' }),
+    });
+  }
+  if (!made) {
+    return Object.assign(out, {
+      why: `The marks show the saddle was ${map.did[madeDir > 0 ? 0 : 1]} ${fmtLength(madeAbs, units, 'adjust')} since your last session; the suggestion was to ${map.imper[k]} ${fmtRange(lo, hi, units)}. ${step.why}`,
+      history: Object.assign(out.history, { status: 'different' }),
+    });
+  }
+  // Made. Did the measurement move towards the band?
+  const towards = finite(prevV) && finite(nowV) && (nowSide.side === 'low' ? nowV > prevV : nowV < prevV);
+  if (towards && step.direction === dir) {
+    const amountText = step.amount ? fmtRange(step.amount.lo, step.amount.hi, units) : `a little (about ${fmtLength(R.saddleStepMm, units, 'adjust')})`;
+    return Object.assign(out, {
+      text: `One more step: ${map.imper[step.direction > 0 ? 0 : 1]} ${amountText}, then retest.`,
+      why: `Your ${label.toLowerCase()} went from ${fmtV(prevV)} to ${fmtV(nowV)} after ${changeWords(madeMm)}, and is still ${nowSide.side === 'low' ? 'below' : 'above'} the target range of ${fmtBand(metric, band, units)}.`,
+      history: Object.assign(out.history, { status: 'progress' }),
+    });
+  }
+  return Object.assign(out, {
+    why: `Your ${label.toLowerCase()} went from ${fmtV(prevV)} to ${fmtV(nowV)} after ${changeWords(madeMm)}. ${step.why}`,
+    history: Object.assign(out.history, { status: 'noImprovement' }),
+  });
+}
+
 function describeOut(pairs, m, targets, units) {
   return pairs.filter(([, c]) => c.status === 'red' || c.status === 'yellow')
     .map(([k, c]) => `${METRICS[k].label} ${fmtMetric(k, m[k].value, units)} is ${c.side === 'low' ? 'below' : 'above'} ${fmtBand(k, targets[k], units)}`).join('; ') + '.';
@@ -1214,9 +1567,10 @@ function discomfortNotes(answers, analysis, targets, units) {
 /* ==========================================================================
    Session results: everything the dashboard and report show
    ========================================================================== */
-function buildResults(analysis, profile, hand, discomfort, units) {
+function buildResults(analysis, profile, hand, discomfort, units, opts) {
   const targets = targetsFor(profile, hand);
-  const rec = analysis.ok ? recommend(analysis, targets, { units }) : null;
+  const o = opts || {};
+  const rec = analysis.ok ? recommend(analysis, targets, { units, history: o.history, bikeMeasures: o.bikeMeasures }) : null;
   const gate = discomfortGate(discomfort);
   const notes = analysis.ok ? discomfortNotes(discomfort, analysis, targets, units) : [];
   const gauges = METRIC_ORDER.map((k) => {
@@ -1252,6 +1606,8 @@ function newSession(rider) {
     id: uid('s'), riderId: rider.id, created: now, modified: now,
     profile: JSON.parse(JSON.stringify(rider.profile)), bike: JSON.parse(JSON.stringify(rider.bike)),
     discomfort: null, clips: [], snapshots: [], reports: [], results: null, retestOf: null, note: '',
+    // 2.0 (schema 2)
+    marks: null, bikeMeasures: null, markedWithRider: null, secondClip: null, replies: [],
   };
 }
 
@@ -1270,8 +1626,19 @@ function migrateFile(obj) {
     r.bike = Object.assign(newRider().bike, r.bike || {});
     for (const s of r.sessions) {
       s.clips = s.clips || []; s.snapshots = s.snapshots || []; s.reports = s.reports || [];
+      // Schema 1 → 2: Beta 1 tapped six points with the rider on the bike; there was no saddle nose or bar top,
+      // so the bike's own numbers are absent.
+      if (!('marks' in s)) {
+        const cal = s.clips[0] && s.clips[0].calibration;
+        s.marks = cal && cal.taps ? JSON.parse(JSON.stringify(cal.taps)) : null;
+        s.markedWithRider = cal ? true : null;
+      }
+      if (!('bikeMeasures' in s)) s.bikeMeasures = null;
+      if (!('secondClip' in s)) s.secondClip = null;
+      if (!Array.isArray(s.replies)) s.replies = [];
     }
   }
+  if (schema < TF_CONFIG.app.schemaVersion) obj.schema = TF_CONFIG.app.schemaVersion;
   return obj;
 }
 
@@ -1371,13 +1738,20 @@ function simulateRider(p) {
   }
   const hip = add(scale(seatU, hipDist + p.saddleOffsetMm), { x: -p.setbackOffsetMm, y: 0 });
   hipForFoot = hip;
-  const shoulder = add(hip, { x: p.torso * Math.cos(p.backDeg * R), y: p.torso * Math.sin(p.backDeg * R) });
-  // Hands: placed so the elbow sits at a comfortable bend.
+  const shoulderFrom = (h) => add(h, { x: p.torso * Math.cos(p.backDeg * R), y: p.torso * Math.sin(p.backDeg * R) });
+  const shoulder = shoulderFrom(hip);
+  // Hands: on the bar. The bar is placed for the unmoved saddle, so moving the saddle leaves the bar where it is
+  // (as on a real bike) and the arms reach for it.
   const reach = p.handReach || (p.upperArm + p.forearm) * 0.975;
   const handDir = norm({ x: 0.92, y: -0.55 });
-  const wrist = add(shoulder, scale(handDir, reach));
-  const elbowSol = circleIntersect(shoulder, p.upperArm, wrist, p.forearm);
+  const baseWrist = add(shoulderFrom(scale(seatU, hipDist)), scale(handDir, reach));
+  let wrist = baseWrist;
+  let elbowSol = circleIntersect(shoulder, p.upperArm, wrist, p.forearm);
+  if (!elbowSol) { wrist = add(shoulder, scale(handDir, reach)); elbowSol = circleIntersect(shoulder, p.upperArm, wrist, p.forearm); }
   const elbow = elbowSol ? (elbowSol[0].y < elbowSol[1].y ? elbowSol[0] : elbowSol[1]) : add(shoulder, scale(handDir, p.upperArm));
+  // Bike points that move with the saddle and the bar (2.0 marks).
+  const saddleNose = add(hip, { x: 140, y: -95 });
+  const barTop = add(baseWrist, { x: 45, y: -10 });
   const index = add(wrist, scale(norm({ x: 1, y: -0.2 }), 85));
   const nose = add(shoulder, { x: 120, y: 190 });
 
@@ -1409,10 +1783,14 @@ function simulateRider(p) {
     put(nearIdx.heel, near.heel, 0.9); put(farIdx.heel, far.heel, 0.4);
     put(nearIdx.toe, near.toe, 0.9); put(farIdx.toe, far.toe, 0.4);
     frames.push({ t, lm });
-    truth.push({ phi, knee: angleAt(hip, kN, near.ankle), hip: angleAt(shoulder, hip, kN), ankle: angleAt(kN, near.ankle, near.toe), kops: kN.x - near.spindle.x });
+    truth.push({ phi, knee: angleAt(hip, kN, near.ankle), hip: angleAt(shoulder, hip, kN), ankle: angleAt(kN, near.ankle, near.toe), kops: kN.x - near.spindle.x,
+      heelPx: img(near.heel), toePx: img(near.toe), spindlePx: img(near.spindle) });
+    if (p.nobodyUntil && t < p.nobodyUntil) frames[frames.length - 1].lm = null;
   }
   const taps = {};
   for (const k of ['rearAxle', 'frontAxle', 'tyreTop', 'tyreBack', 'bb']) taps[k] = img(bike[k]);
+  // 2.0: the eight marks on the bike, the crank set level and forward by hand (empty saddle).
+  const marks = Object.assign({}, taps, { spindle: img({ x: p.crank, y: 0 }), saddleNose: img(saddleNose), barTop: img(barTop) });
   // The calibration frame: crank closest to level-forward in the middle of the clip.
   let calI = 0, best = Infinity;
   for (let i = Math.floor(n * 0.3); i < Math.floor(n * 0.7); i++) {
@@ -1420,8 +1798,13 @@ function simulateRider(p) {
     if (d < best) { best = d; calI = i; }
   }
   taps.spindle = img(footAt(truth[calI].phi).spindle);
+  // The same eight marks made with the rider on and holding still at the calibration frame.
+  const marksWithRider = Object.assign({}, marks, { spindle: taps.spindle });
+  const t0 = truth[0];
   return {
-    width: p.W, height: p.H, fps: p.fps, frames, taps, calT: frames[calI].t, truth,
+    width: p.W, height: p.H, fps: p.fps, frames, taps, calT: frames[calI].t, truth, marks, marksWithRider,
+    footSpindleTruth: spindleInFoot(t0.heelPx, t0.toePx, t0.spindlePx),
+    bikeTruth: { saddleHeight: Math.hypot(saddleNose.x, saddleNose.y), saddleSetback: -saddleNose.x, drop: saddleNose.y - barTop.y, reach: barTop.x - saddleNose.x, effectiveSeatAngle: Math.atan2(saddleNose.y, -saddleNose.x) * DEG },
     params: p, hipDist,
     truthSummary: {
       kneeExtension: Math.max(...truth.map((x) => x.knee)),
@@ -1443,9 +1826,10 @@ const TF = {
   angleAt, median, quantile, mean, iqr, clamp, dist, finite, uid, solveKnee, circleIntersect,
   fmtLength, fmtSignedMm, fmtRange, fmtAngle, fmtMetric, fmtBand, inchFraction,
   targetsFor, classify, compactLandmarks, nearSide, facingDirection, smoothSide, toWorld, toImage,
-  wheelOuterDiameter, computeCalibration, spindleInFoot, spindleFromFoot,
-  StrokeCounter, framingCheck, describeMissing, captureQuality, pickCalibrationTime,
-  analyseClip, nearestFrameIndex, recommend, saddleHeightChange, saddleSetbackChange,
+  wheelOuterDiameter, computeCalibration, spindleInFoot, spindleFromFoot, fitFootSpindle,
+  BIKE_MARKS, BIKE_MEASURES, bikeMeasuresFrom, toBikeFrame, bikeFramingCheck, compareMarks,
+  StrokeCounter, framingCheck, framingCuts, riderPresent, describeMissing, captureQuality, pickCalibrationTime,
+  analyseClip, nearestFrameIndex, recommend, withHistory, historyEntry, saddleHeightChange, saddleSetbackChange,
   discomfortGate, discomfortNotes, buildResults,
   newFitFile, newRider, newSession, migrateFile, mergeFiles, simulateRider,
 };
