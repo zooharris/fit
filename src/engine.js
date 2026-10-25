@@ -133,6 +133,7 @@ const TF_CONFIG = {
     spindleFitJitterFactor: 1.0,  // …or, when the tracking is noisier than that, up to 1.0× the foot's own frame-to-frame jitter
     spindleFitIterations: 30,
     spindleMarkWeightFrames: 10,  // a spindle mark made with the rider on counts as this many frames
+    spindleMarkMaxWorsening: 1.15, // the mark is dropped when it makes the ride's own residual worse than this × (plus 0.5 px)
     spindleFitMinFrames: 30,
     // The ride also refines the bottom-bracket position (centre of the pedal circle). A refined centre that
     // disagrees with the mark by more than this (px at 720p, scaled) means the mark was off: the refined centre
@@ -731,19 +732,17 @@ function fitFootSpindle(frames, bb, crankPx, opts) {
   const A = TF_CONFIG.analysis, o = opts || {};
   const pts = frames.filter((f) => f && f.heel && f.toe && dist(f.heel, f.toe) > 1);
   if (pts.length < A.spindleFitMinFrames || !bb || !(crankPx > 0)) return { ok: false, reason: 'Not enough frames with the foot seen.', frames: pts.length };
-  const mark = o.mark && o.mark.heel && o.mark.toe && o.mark.spindle ? o.mark : null;
-  // Starting point.
-  let rel;
-  if (mark) rel = spindleInFoot(mark.heel, mark.toe, mark.spindle);
-  else {
-    // The frame where the toe is furthest forward of the bottom bracket: the crank is near level-forward there.
-    const facing = o.facing || 1;
-    let best = null, bestV = -Infinity;
-    for (const f of pts) { const v = (f.toe.x - bb.x) * facing; if (v > bestV) { bestV = v; best = f; } }
-    rel = spindleInFoot(best.heel, best.toe, { x: bb.x + facing * crankPx, y: bb.y });
-  }
-  const wMark = mark ? Math.sqrt(A.spindleMarkWeightFrames) : 0;
-  const solve = (use, start) => {
+  let mark = o.mark && o.mark.heel && o.mark.toe && o.mark.spindle ? o.mark : null;
+  // Starting point from the ride alone: the frame where the toe is furthest forward of the bottom bracket, where
+  // the crank is near level-forward. A mark made with the rider on gives a second starting point and one
+  // weighted equation; it is kept only when it agrees with the ride (a rider who shifted the foot between the
+  // frozen frame and the tracker's reading would otherwise drag the whole fit off the crank circle).
+  const facing = o.facing || 1;
+  let best = null, bestV = -Infinity;
+  for (const f of pts) { const v = (f.toe.x - bb.x) * facing; if (v > bestV) { bestV = v; best = f; } }
+  const relRide = spindleInFoot(best.heel, best.toe, { x: bb.x + facing * crankPx, y: bb.y });
+  const wMark = Math.sqrt(A.spindleMarkWeightFrames);
+  const solve = (use, start, useMark) => {
     let a = start.a, b = start.b, lambda = 1e-3, cost = Infinity;
     const evalAt = (aa, bb2) => {
       let c = 0; const rows = [];
@@ -755,7 +754,7 @@ function fitFootSpindle(frames, bb, crankPx, opts) {
         rows.push({ r, ja: dot(u, fr.ex) * fr.len, jb: dot(u, fr.ey) * fr.len });
         c += r * r;
       }
-      if (mark) {
+      if (useMark && mark) {
         const fr = footFrame(mark.heel, mark.toe);
         const q = add(fr.o, add(scale(fr.ex, aa * fr.len), scale(fr.ey, bb2 * fr.len)));
         const e = sub(q, mark.spindle);
@@ -784,12 +783,18 @@ function fitFootSpindle(frames, bb, crankPx, opts) {
     const rs = cur.rows.slice(0, n).map((x) => Math.abs(x.r));
     return { rel: { a, b }, rs, rms: Math.sqrt(rs.reduce((t, x) => t + x * x, 0) / n) };
   };
-  let fit = solve(pts, rel);
+  let fit = solve(pts, relRide, false), markIgnored = false;
+  if (mark) {
+    const withMark = solve(pts, spindleInFoot(mark.heel, mark.toe, mark.spindle), true);
+    // fit.rms covers the ride frames only, so the two are comparable: keep the mark when the ride agrees with it.
+    if (withMark.rms <= fit.rms * A.spindleMarkMaxWorsening + 0.5) fit = withMark;
+    else { mark = null; markIgnored = true; }
+  }
   // One robust pass: drop frames well off the circle (tracking slips) and refit.
   const med = median(fit.rs);
   let keep = pts.filter((_, i) => fit.rs[i] <= Math.max(3 * med, crankPx * 0.02));
   if (keep.length < A.spindleFitMinFrames) keep = pts;
-  if (keep.length < pts.length) fit = solve(keep, fit.rel);
+  if (keep.length < pts.length) fit = solve(keep, fit.rel, !!mark);
 
   // The tracking's own noise: frame-to-frame jitter of the toe (second differences, scaled to one frame).
   const jit = [];
@@ -812,7 +817,7 @@ function fitFootSpindle(frames, bb, crankPx, opts) {
   const residual = fit.rms / crankPx;
   const limitPx = Math.max(A.spindleFitMaxResidual * crankPx, A.spindleFitJitterFactor * jitterPx);
   const ok = fit.rms <= limitPx;
-  return { ok, rel: fit.rel, residual, jitterPx, frames: keep.length, source: mark ? 'fit+mark' : 'fit',
+  return { ok, rel: fit.rel, residual, jitterPx, frames: keep.length, source: mark ? 'fit+mark' : 'fit', markIgnored,
     bb: centre, bbCorrected, bbShiftPx: shiftPx, bbRefined: refined ? refined.c : null,
     reason: ok ? '' : `The pedal could not be followed reliably (the foot track was ${Math.round(residual * 100)}% of the crank length off the crank circle).` };
 }
@@ -1082,7 +1087,8 @@ function analyseClip(clip, opts) {
       if (f && f.j.heel && f.j.toe) mark = { heel: f.j.heel, toe: f.j.toe, spindle: cal.taps.spindle };
     }
     const fit = fitFootSpindle(sm.map((f) => ({ heel: f.j.heel, toe: f.j.toe })), bb, crankPx, { mark, facing, frameH: H });
-    cal.spindleFit = { ok: fit.ok, residual: fit.residual, jitterPx: fit.jitterPx, frames: fit.frames, source: fit.source, reason: fit.reason, bbCorrected: !!fit.bbCorrected, bbShiftPx: fit.bbShiftPx || 0 };
+    cal.spindleFit = { ok: fit.ok, residual: fit.residual, jitterPx: fit.jitterPx, frames: fit.frames, source: fit.source, reason: fit.reason, bbCorrected: !!fit.bbCorrected, bbShiftPx: fit.bbShiftPx || 0, markIgnored: !!fit.markIgnored };
+    if (fit.markIgnored) result.notes.push('The pedal mark made with the rider on the bike did not agree with the ride (the foot had probably moved), so the pedal was followed from the ride alone.');
     if (fit.ok) {
       footRel = fit.rel;
       if (fit.bbCorrected) {

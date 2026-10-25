@@ -518,7 +518,7 @@ details.more summary svg { width: 14px; height: 14px; transition: transform .15s
 </head>
 <body>
 <noscript><div style="padding:24px;font-family:system-ui">Tango Fitter needs JavaScript turned on.</div></noscript>
-<!-- Tango Fitter 0.1.0-beta.1 · built 2026-10-25 17:05 UTC · one self-contained file -->
+<!-- Tango Fitter 0.1.0-beta.1 · built 2026-10-25 17:19 UTC · one self-contained file -->
 <script>
 /* ==========================================================================
    Tango Fitter — measurement engine
@@ -655,6 +655,7 @@ const TF_CONFIG = {
     spindleFitJitterFactor: 1.0,  // …or, when the tracking is noisier than that, up to 1.0× the foot's own frame-to-frame jitter
     spindleFitIterations: 30,
     spindleMarkWeightFrames: 10,  // a spindle mark made with the rider on counts as this many frames
+    spindleMarkMaxWorsening: 1.15, // the mark is dropped when it makes the ride's own residual worse than this × (plus 0.5 px)
     spindleFitMinFrames: 30,
     // The ride also refines the bottom-bracket position (centre of the pedal circle). A refined centre that
     // disagrees with the mark by more than this (px at 720p, scaled) means the mark was off: the refined centre
@@ -1253,19 +1254,17 @@ function fitFootSpindle(frames, bb, crankPx, opts) {
   const A = TF_CONFIG.analysis, o = opts || {};
   const pts = frames.filter((f) => f && f.heel && f.toe && dist(f.heel, f.toe) > 1);
   if (pts.length < A.spindleFitMinFrames || !bb || !(crankPx > 0)) return { ok: false, reason: 'Not enough frames with the foot seen.', frames: pts.length };
-  const mark = o.mark && o.mark.heel && o.mark.toe && o.mark.spindle ? o.mark : null;
-  // Starting point.
-  let rel;
-  if (mark) rel = spindleInFoot(mark.heel, mark.toe, mark.spindle);
-  else {
-    // The frame where the toe is furthest forward of the bottom bracket: the crank is near level-forward there.
-    const facing = o.facing || 1;
-    let best = null, bestV = -Infinity;
-    for (const f of pts) { const v = (f.toe.x - bb.x) * facing; if (v > bestV) { bestV = v; best = f; } }
-    rel = spindleInFoot(best.heel, best.toe, { x: bb.x + facing * crankPx, y: bb.y });
-  }
-  const wMark = mark ? Math.sqrt(A.spindleMarkWeightFrames) : 0;
-  const solve = (use, start) => {
+  let mark = o.mark && o.mark.heel && o.mark.toe && o.mark.spindle ? o.mark : null;
+  // Starting point from the ride alone: the frame where the toe is furthest forward of the bottom bracket, where
+  // the crank is near level-forward. A mark made with the rider on gives a second starting point and one
+  // weighted equation; it is kept only when it agrees with the ride (a rider who shifted the foot between the
+  // frozen frame and the tracker's reading would otherwise drag the whole fit off the crank circle).
+  const facing = o.facing || 1;
+  let best = null, bestV = -Infinity;
+  for (const f of pts) { const v = (f.toe.x - bb.x) * facing; if (v > bestV) { bestV = v; best = f; } }
+  const relRide = spindleInFoot(best.heel, best.toe, { x: bb.x + facing * crankPx, y: bb.y });
+  const wMark = Math.sqrt(A.spindleMarkWeightFrames);
+  const solve = (use, start, useMark) => {
     let a = start.a, b = start.b, lambda = 1e-3, cost = Infinity;
     const evalAt = (aa, bb2) => {
       let c = 0; const rows = [];
@@ -1277,7 +1276,7 @@ function fitFootSpindle(frames, bb, crankPx, opts) {
         rows.push({ r, ja: dot(u, fr.ex) * fr.len, jb: dot(u, fr.ey) * fr.len });
         c += r * r;
       }
-      if (mark) {
+      if (useMark && mark) {
         const fr = footFrame(mark.heel, mark.toe);
         const q = add(fr.o, add(scale(fr.ex, aa * fr.len), scale(fr.ey, bb2 * fr.len)));
         const e = sub(q, mark.spindle);
@@ -1306,12 +1305,18 @@ function fitFootSpindle(frames, bb, crankPx, opts) {
     const rs = cur.rows.slice(0, n).map((x) => Math.abs(x.r));
     return { rel: { a, b }, rs, rms: Math.sqrt(rs.reduce((t, x) => t + x * x, 0) / n) };
   };
-  let fit = solve(pts, rel);
+  let fit = solve(pts, relRide, false), markIgnored = false;
+  if (mark) {
+    const withMark = solve(pts, spindleInFoot(mark.heel, mark.toe, mark.spindle), true);
+    // fit.rms covers the ride frames only, so the two are comparable: keep the mark when the ride agrees with it.
+    if (withMark.rms <= fit.rms * A.spindleMarkMaxWorsening + 0.5) fit = withMark;
+    else { mark = null; markIgnored = true; }
+  }
   // One robust pass: drop frames well off the circle (tracking slips) and refit.
   const med = median(fit.rs);
   let keep = pts.filter((_, i) => fit.rs[i] <= Math.max(3 * med, crankPx * 0.02));
   if (keep.length < A.spindleFitMinFrames) keep = pts;
-  if (keep.length < pts.length) fit = solve(keep, fit.rel);
+  if (keep.length < pts.length) fit = solve(keep, fit.rel, !!mark);
 
   // The tracking's own noise: frame-to-frame jitter of the toe (second differences, scaled to one frame).
   const jit = [];
@@ -1334,7 +1339,7 @@ function fitFootSpindle(frames, bb, crankPx, opts) {
   const residual = fit.rms / crankPx;
   const limitPx = Math.max(A.spindleFitMaxResidual * crankPx, A.spindleFitJitterFactor * jitterPx);
   const ok = fit.rms <= limitPx;
-  return { ok, rel: fit.rel, residual, jitterPx, frames: keep.length, source: mark ? 'fit+mark' : 'fit',
+  return { ok, rel: fit.rel, residual, jitterPx, frames: keep.length, source: mark ? 'fit+mark' : 'fit', markIgnored,
     bb: centre, bbCorrected, bbShiftPx: shiftPx, bbRefined: refined ? refined.c : null,
     reason: ok ? '' : `The pedal could not be followed reliably (the foot track was ${Math.round(residual * 100)}% of the crank length off the crank circle).` };
 }
@@ -1604,7 +1609,8 @@ function analyseClip(clip, opts) {
       if (f && f.j.heel && f.j.toe) mark = { heel: f.j.heel, toe: f.j.toe, spindle: cal.taps.spindle };
     }
     const fit = fitFootSpindle(sm.map((f) => ({ heel: f.j.heel, toe: f.j.toe })), bb, crankPx, { mark, facing, frameH: H });
-    cal.spindleFit = { ok: fit.ok, residual: fit.residual, jitterPx: fit.jitterPx, frames: fit.frames, source: fit.source, reason: fit.reason, bbCorrected: !!fit.bbCorrected, bbShiftPx: fit.bbShiftPx || 0 };
+    cal.spindleFit = { ok: fit.ok, residual: fit.residual, jitterPx: fit.jitterPx, frames: fit.frames, source: fit.source, reason: fit.reason, bbCorrected: !!fit.bbCorrected, bbShiftPx: fit.bbShiftPx || 0, markIgnored: !!fit.markIgnored };
+    if (fit.markIgnored) result.notes.push('The pedal mark made with the rider on the bike did not agree with the ride (the foot had probably moved), so the pedal was followed from the ride alone.');
     if (fit.ok) {
       footRel = fit.rel;
       if (fit.bbCorrected) {
@@ -3809,9 +3815,11 @@ function levelFromOrientation(e, backCamera) {
   const R = Math.PI / 180, b = e.beta * R, g = e.gamma * R;
   const up = { x: -Math.sin(g) * Math.cos(b), y: Math.sin(b), z: Math.cos(g) * Math.cos(b) };
   const pitch = Math.asin(Math.max(-1, Math.min(1, backCamera ? -up.z : up.z))) / R; // optical axis above (+) or below (−) level
-  const ang = ((screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0) * R;
-  const imgUp = { x: -Math.sin(ang), y: Math.cos(ang) }, imgRight = { x: Math.cos(ang), y: Math.sin(ang) };
-  const roll = Math.atan2(up.x * imgRight.x + up.y * imgRight.y, up.x * imgUp.x + up.y * imgUp.y) / R;
+  // Roll: how far gravity, seen in the screen's plane, is from the nearest screen edge. Independent of which way
+  // round the phone is held (either landscape is fine; the Landscape light covers portrait).
+  let theta = Math.atan2(up.y, up.x) / R; // angle of "up" in the device's x–y plane
+  let roll = ((theta % 90) + 90) % 90; if (roll > 45) roll -= 90;
+  if (Math.hypot(up.x, up.y) < 0.2) roll = 0; // phone lying flat: no meaningful roll
   return { pitch, roll };
 }
 
@@ -3993,7 +4001,7 @@ function runFit(r, d) {
       let lm = null;
       try { lm = cap.det.detect(video, now); } catch (e) { console.warn(e); }
       cap.lm = lm;
-      const on = TF.riderPresent(lm, Object.keys(cap.marks).length >= 5 ? cap.marks : null, cap.W, cap.H);
+      const on = TF.riderPresent(lm, presenceMarks(), cap.W, cap.H);
       if (on && !cap.rider) { cap.riderSince = now; }
       cap.rider = on;
       const side = lm ? (cap.side || TF.framingCheck(lm).side) : 'left';
@@ -4055,9 +4063,20 @@ function runFit(r, d) {
     /* ----- marking ----- */
     function freeze() {
       const g = still.getContext('2d'); g.drawImage(video, 0, 0, cap.W, cap.H);
-      cap.frozenLm = cap.lm ? cap.lm.map((p) => p.slice()) : null;
-      cap.frozenRider = cap.rider;
+      // The rider is read off the frozen frame itself (not the last live reading, up to half a second old), so a
+      // spindle mark made with the rider on uses the heel and toe exactly where they were in the picture marked.
+      let lm = null;
+      if (cap.det) { try { lm = cap.det.detect(still, performance.now()); } catch (e) { console.warn(e); } }
+      cap.frozenLm = lm ? lm.map((p) => p.slice()) : (cap.lm ? cap.lm.map((p) => p.slice()) : null);
+      cap.frozenRider = cap.det ? TF.riderPresent(cap.frozenLm, presenceMarks(), cap.W, cap.H) : cap.rider;
       still.hidden = false; video.hidden = true;
+    }
+    // The bike's span for the presence check: the marks once there are enough, else the outline the bike was lined up with.
+    function presenceMarks() {
+      if (Object.keys(cap.marks).length >= 5) return cap.marks;
+      if (!cap.W) return null;
+      const g = silhouetteGeometry(cap.W, cap.H, cap.flip), b = BRAND.bike;
+      return { rearAxle: g.map(b.rear), frontAxle: g.map(b.front), bb: g.map(b.bb) };
     }
     function enterMarking() {
       cap.state = 'marking'; cap.ghosts = null; drawSilhouette();
@@ -4239,9 +4258,9 @@ function runFit(r, d) {
       if (riding() && cap.lm && !cap.saidSeen && cap.rider) { cap.saidSeen = true; Sound.say('I can see you.', { interrupt: false }); }
       if (riding()) sayIssue(now, fc);
       if (cap.state === 'waiting') {
+        if (v.startMode === 'seconds') return; // the countdown owns the status line
         $u('#fx-small').textContent = Number.isFinite(cad) ? `${Math.round(cad)} rpm` : triggerText().start;
         if (!framingOk(now)) return;
-        if (v.startMode === 'seconds') return;
         if (v.startMode === 'beeps') { if (cap.sc.count >= 3) beginBeeps(); return; }
         if (!cap.sc.stable()) { status('Pedal steadily', Number.isFinite(cad) ? `Cadence ${Math.round(cad)} rpm, settling` : 'Steady, moderate effort'); return; }
         if (cap.sayCadence) {

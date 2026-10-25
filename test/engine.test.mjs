@@ -551,3 +551,16 @@ test('B: a reading within a degree of the band edge is "just below", never a rou
   const r2 = TF.recommend({ ok: true, metrics: { kneeExtension: { value: 136.2, confidence: 'high' } } }, t, {});
   assert.match(r2.current.why, /^Your knee extension is 136°, below the target range/);
 });
+
+test('B: a rider-on spindle mark whose foot had moved is dropped, and the ride alone still gives KOPS', () => {
+  const sim = TF.simulateRider({ noisePx: 2 });
+  const i = TF.nearestFrameIndex(sim.frames, sim.calT);
+  const moved = sim.truth[Math.min(sim.truth.length - 1, i + 8)]; // the foot a quarter-second on
+  const cal = calOf(sim.marksWithRider, sim, { markedWithRider: true, spindleFoot: { heel: moved.heelPx, toe: moved.toePx } });
+  const a = TF.analyseClip({ width: sim.width, height: sim.height, frames: sim.frames, calibration: cal });
+  assert.equal(cal.spindleFit.ok, true, cal.spindleFit.reason);
+  assert.equal(cal.spindleFit.markIgnored, true);
+  assert.equal(cal.spindleFit.source, 'fit');
+  near(a.metrics.kops.value, trueKopsAtLevel(sim), 5, 'KOPS');
+  assert.ok(a.notes.some((n) => /did not agree with the ride/.test(n)));
+});

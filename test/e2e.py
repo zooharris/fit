@@ -31,7 +31,7 @@ FAKE_POSE = r"""
     return sims[key];
   };
   window.__TF_FAKE_POSE = (kind, src, ts) => {
-    const W = src.videoWidth || 640, H = src.videoHeight || 480;
+    const W = src.videoWidth || src.width || 640, H = src.videoHeight || src.height || 480;
     const sim = window.__TF_SIM_FOR(W, H);
     window.__TF_SIM = sim;
     if (kind === 'lite' && !window.__TF_RIDER_ON) return null;
@@ -39,7 +39,9 @@ FAKE_POSE = r"""
     if (kind === 'lite') { if (live0 == null) live0 = ts; t = (ts - live0) / 1000; }
     else t = ts / 1000;
     t = t % (sim.frames.length / sim.fps);
-    const i = Math.min(sim.frames.length - 1, Math.round(t * sim.fps));
+    let i = Math.min(sim.frames.length - 1, Math.round(t * sim.fps));
+    // A frozen frame (a canvas, not the video) shows the rider holding the crank level, as asked.
+    if (!src.videoWidth) i = TF.nearestFrameIndex(sim.frames, sim.calT);
     const lm = sim.frames[i].lm.map((p) => p.slice());
     const g = window.__TF_GESTURE;
     if (g && kind === 'lite') { const w = g === 'right' ? 16 : 15; lm[w] = [lm[0][0] + 0.02, lm[0][1] - 0.06, 0.95]; }

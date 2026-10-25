@@ -95,9 +95,11 @@ function levelFromOrientation(e, backCamera) {
   const R = Math.PI / 180, b = e.beta * R, g = e.gamma * R;
   const up = { x: -Math.sin(g) * Math.cos(b), y: Math.sin(b), z: Math.cos(g) * Math.cos(b) };
   const pitch = Math.asin(Math.max(-1, Math.min(1, backCamera ? -up.z : up.z))) / R; // optical axis above (+) or below (−) level
-  const ang = ((screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0) * R;
-  const imgUp = { x: -Math.sin(ang), y: Math.cos(ang) }, imgRight = { x: Math.cos(ang), y: Math.sin(ang) };
-  const roll = Math.atan2(up.x * imgRight.x + up.y * imgRight.y, up.x * imgUp.x + up.y * imgUp.y) / R;
+  // Roll: how far gravity, seen in the screen's plane, is from the nearest screen edge. Independent of which way
+  // round the phone is held (either landscape is fine; the Landscape light covers portrait).
+  let theta = Math.atan2(up.y, up.x) / R; // angle of "up" in the device's x–y plane
+  let roll = ((theta % 90) + 90) % 90; if (roll > 45) roll -= 90;
+  if (Math.hypot(up.x, up.y) < 0.2) roll = 0; // phone lying flat: no meaningful roll
   return { pitch, roll };
 }
 
@@ -279,7 +281,7 @@ function runFit(r, d) {
       let lm = null;
       try { lm = cap.det.detect(video, now); } catch (e) { console.warn(e); }
       cap.lm = lm;
-      const on = TF.riderPresent(lm, Object.keys(cap.marks).length >= 5 ? cap.marks : null, cap.W, cap.H);
+      const on = TF.riderPresent(lm, presenceMarks(), cap.W, cap.H);
       if (on && !cap.rider) { cap.riderSince = now; }
       cap.rider = on;
       const side = lm ? (cap.side || TF.framingCheck(lm).side) : 'left';
@@ -341,9 +343,20 @@ function runFit(r, d) {
     /* ----- marking ----- */
     function freeze() {
       const g = still.getContext('2d'); g.drawImage(video, 0, 0, cap.W, cap.H);
-      cap.frozenLm = cap.lm ? cap.lm.map((p) => p.slice()) : null;
-      cap.frozenRider = cap.rider;
+      // The rider is read off the frozen frame itself (not the last live reading, up to half a second old), so a
+      // spindle mark made with the rider on uses the heel and toe exactly where they were in the picture marked.
+      let lm = null;
+      if (cap.det) { try { lm = cap.det.detect(still, performance.now()); } catch (e) { console.warn(e); } }
+      cap.frozenLm = lm ? lm.map((p) => p.slice()) : (cap.lm ? cap.lm.map((p) => p.slice()) : null);
+      cap.frozenRider = cap.det ? TF.riderPresent(cap.frozenLm, presenceMarks(), cap.W, cap.H) : cap.rider;
       still.hidden = false; video.hidden = true;
+    }
+    // The bike's span for the presence check: the marks once there are enough, else the outline the bike was lined up with.
+    function presenceMarks() {
+      if (Object.keys(cap.marks).length >= 5) return cap.marks;
+      if (!cap.W) return null;
+      const g = silhouetteGeometry(cap.W, cap.H, cap.flip), b = BRAND.bike;
+      return { rearAxle: g.map(b.rear), frontAxle: g.map(b.front), bb: g.map(b.bb) };
     }
     function enterMarking() {
       cap.state = 'marking'; cap.ghosts = null; drawSilhouette();
@@ -525,9 +538,9 @@ function runFit(r, d) {
       if (riding() && cap.lm && !cap.saidSeen && cap.rider) { cap.saidSeen = true; Sound.say('I can see you.', { interrupt: false }); }
       if (riding()) sayIssue(now, fc);
       if (cap.state === 'waiting') {
+        if (v.startMode === 'seconds') return; // the countdown owns the status line
         $u('#fx-small').textContent = Number.isFinite(cad) ? `${Math.round(cad)} rpm` : triggerText().start;
         if (!framingOk(now)) return;
-        if (v.startMode === 'seconds') return;
         if (v.startMode === 'beeps') { if (cap.sc.count >= 3) beginBeeps(); return; }
         if (!cap.sc.stable()) { status('Pedal steadily', Number.isFinite(cad) ? `Cadence ${Math.round(cad)} rpm, settling` : 'Steady, moderate effort'); return; }
         if (cap.sayCadence) {
