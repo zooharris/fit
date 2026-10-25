@@ -106,16 +106,17 @@ route('/intro', async (main, { query }) => {
 }, { nav: 'fit' });
 
 function sessionRow(r, s, showRider) {
+  return `<a class="list-item" href="#/session/${s.id}"><span class="grow">${sessionRowInner(r, s, showRider)}</span>${icon('chevR', 'chev')}</a>`;
+}
+function sessionRowInner(r, s, showRider) {
   const res = sessionResults(r, s);
   const rec = res && res.recommendation && res.recommendation.current;
   const ke = res && res.gauges.find((g) => g.metric === 'kneeExtension');
   const clip = s.clips[0];
   const hand = clip ? TF.HAND_POSITIONS[clip.hand] : '';
-  const headline = !res ? 'No results' : rec ? rec.action : 'Saddle position in range';
-  return `<a class="list-item" href="#/session/${s.id}">
-    <span class="grow"><span class="title">${esc(fmtDateTime(s.created))}${s.sample ? ' <span class="tag teal">Sample</span>' : ''}${s.retestOf ? ' <span class="tag">Retest</span>' : ''}</span><br>
-    <span class="sub">${showRider ? `${esc(r.name)} · ` : ''}${esc(headline)}${hand ? ` · ${esc(hand)}` : ''}${ke && TF.finite(ke.value) ? ` · knee ${Math.round(ke.value)}°` : ''}</span></span>
-    ${icon('chevR', 'chev')}</a>`;
+  const headline = !res ? 'No results' : rec ? (rec.kind === 'stop' ? 'See a professional' : rec.text.replace(/, then retest\.$/, '')) : 'Saddle position in range';
+  return `<span class="title">${esc(fmtDateTime(s.created))}${s.sample ? ' <span class="tag teal">Sample</span>' : ''}${s.retestOf ? ' <span class="tag">Retest</span>' : ''}</span><br>
+    <span class="sub">${showRider ? `${esc(r.name)} · ` : ''}${esc(headline)}${hand ? ` · ${esc(hand)}` : ''}${ke && TF.finite(ke.value) ? ` · knee extension ${Math.round(ke.value)}°` : ''}</span>`;
 }
 
 /** Results for a session, recomputed from its frames (so units and wording follow current settings). */
@@ -248,72 +249,121 @@ route('/rider/:id', async (main, { id }) => {
   };
 }, { needsFile: true, nav: 'fit' });
 
-/* ---------- history ---------- */
+/* ---------- sessions (brief D2) ---------- */
 route('/history', async () => { go('#/sessions'); });
-route('/sessions', async (main) => {
-  const r = rider();
-  const showAll = S.meta.historyAll && S.file.riders.length > 1;
-  const items = (showAll ? allSessions() : (r ? r.sessions.map((s) => ({ rider: r, session: s })) : []))
+route('/sessions', async (main, { query }) => {
+  const riders = S.file.riders;
+  const cur = rider();
+  const which = S.meta.sessionsRider === 'all' && riders.length > 1 ? 'all' : (cur ? cur.id : null);
+  const items = (which === 'all' ? allSessions() : (cur ? cur.sessions.map((x) => ({ rider: cur, session: x })) : []))
     .sort((a, b) => (a.session.created < b.session.created ? 1 : -1));
+  const selecting = query.get('select') === '1';
+  const picked = new Set();
+  const row = (x) => selecting
+    ? `<label class="list-item pick"><input type="checkbox" data-id="${x.session.id}"><span class="grow">${sessionRowInner(x.rider, x.session, which === 'all')}</span></label>`
+    : sessionRow(x.rider, x.session, which === 'all');
   main.innerHTML = `
-    <div class="page-head"><div><h1>Sessions</h1><div class="sub">${showAll ? 'Every rider in this file' : esc(r ? r.name : '')} · ${plural(items.length, 'session')}</div></div>
-      ${S.file.riders.length > 1 ? `<div class="seg" id="hs"><button data-v="one">${esc(r ? r.name : 'This rider')}</button><button data-v="all">All riders</button></div>` : ''}</div>
-    ${items.length ? `<div class="list">${items.map((x) => sessionRow(x.rider, x.session, showAll)).join('')}</div>`
-      : `<div class="empty panel">${icon('history')}<p>No sessions yet.</p><a class="btn primary" style="margin-top:12px" href="#/session/new">${icon('camera')}Start a fit session</a></div>`}`;
-  $$('#hs button', main).forEach((b) => { b.classList.toggle('on', (b.dataset.v === 'all') === !!showAll); b.onclick = async () => { S.meta.historyAll = b.dataset.v === 'all'; await saveMeta(); render(); }; });
+    <div class="page-head"><div><h1>Sessions</h1><div class="sub">${which === 'all' ? 'Every rider in this file' : esc(cur ? cur.name : '')} · ${plural(items.length, 'session')}</div></div>
+      ${items.length > 1 || selecting ? `<div class="row">${selecting ? '<a class="btn sm quiet" href="#/sessions">Done</a>' : `<a class="btn sm" href="#/sessions?select=1" id="ss-select">${icon('check')}Compare or delete</a>`}</div>` : ''}</div>
+    ${riders.length > 1 ? `<div class="chips" id="ss-riders" style="margin-bottom:12px">${riders.map((r) => `<button class="chip ${which === r.id ? 'on' : ''}" data-r="${r.id}">${esc(r.name)}</button>`).join('')}<button class="chip ${which === 'all' ? 'on' : ''}" data-r="all">All riders</button></div>` : ''}
+    ${selecting ? `<div class="select-bar panel tight"><span class="grow small muted" id="ss-count">Pick two sessions to compare, or any to delete.</span><button class="btn sm" id="ss-compare" disabled>Compare</button><button class="btn sm danger" id="ss-delete" disabled>${icon('trash')}Delete</button></div>` : ''}
+    ${items.length ? `<div class="list">${items.map(row).join('')}</div>`
+      : `<div class="empty panel">${icon('history')}<p>No sessions yet.</p><a class="btn primary" style="margin-top:12px" href="#/session/new">${icon('camera')}Start a fit</a></div>`}`;
+  $$('#ss-riders .chip', main).forEach((b) => (b.onclick = async () => {
+    if (b.dataset.r === 'all') S.meta.sessionsRider = 'all';
+    else { S.meta.sessionsRider = 'one'; S.riderId = b.dataset.r; renderShell('sessions'); }
+    await saveMeta(); render();
+  }));
+  if (!selecting) return;
+  const paint = () => {
+    $('#ss-count', main).textContent = picked.size ? `${plural(picked.size, 'session')} picked${picked.size === 2 ? '' : picked.size < 2 ? ' · pick two to compare' : ' · compare needs exactly two'}` : 'Pick two sessions to compare, or any to delete.';
+    $('#ss-compare', main).disabled = picked.size !== 2;
+    $('#ss-delete', main).disabled = picked.size === 0;
+  };
+  $$('input[data-id]', main).forEach((c) => (c.onchange = () => { if (c.checked) picked.add(c.dataset.id); else picked.delete(c.dataset.id); paint(); }));
+  $('#ss-compare', main).onclick = () => { const [a, b] = [...picked]; go(`#/compare/${a}/${b}`); };
+  $('#ss-delete', main).onclick = async () => {
+    const list = [...picked].map(findSession).filter(Boolean);
+    const names = list.map((f) => fmtDateTime(f.session.created)).join(', ');
+    if (!(await confirmDanger(`Delete ${plural(list.length, 'session')}?`, `${esc(names)}: the sessions, with their videos, snapshots and reports, are removed from this device. Copies already exported are not affected.`, 'Delete'))) return;
+    for (const f of list) {
+      await deleteBlobs(`riders/${f.rider.id}/sessions/${f.session.id}/`);
+      f.rider.sessions = f.rider.sessions.filter((x) => x.id !== f.session.id);
+      S.cache.delete(f.session.id); S.cache.delete(`${f.session.id}:2`);
+    }
+    await saveFile();
+    toast(`${plural(list.length, 'session')} deleted.`);
+    go('#/sessions');
+  };
+  paint();
 }, { needsFile: true, nav: 'sessions' });
 
-/* ---------- settings ---------- */
+/* ---------- settings: collapsible groups (brief D1) ---------- */
 route('/settings', async (main) => {
   const v = Settings.v;
   const seg = (id, opts, cur) => `<div class="seg" id="${id}">${opts.map(([val, lab]) => `<button data-v="${val}" class="${String(val) === String(cur) ? 'on' : ''}">${esc(lab)}</button>`).join('')}</div>`;
-  let sizes = null;
+  const start = v.startMode === 'strokes' ? `${v.startStrokes} strokes` : v.startMode === 'beeps' ? `${v.startBeeps} beeps` : `${v.startSeconds} s`;
+  const stop = v.stopMode === 'strokes' ? `${v.stopStrokes} strokes` : `${v.stopSeconds} s`;
+  const open = v.settingsOpen || 'display';
+  const group = (key, title, value, body) => `<details class="panel group" data-g="${key}" ${open === key ? 'open' : ''}><summary><h2>${esc(title)}</h2><span class="hval">${esc(value)}</span>${icon('chevR')}</summary><div class="stack gbody">${body}</div></details>`;
+  const fileVal = S.file ? `${S.file.name} · ${unexported() ? 'not exported' : 'exported'}` : 'No file open';
   main.innerHTML = `
-    <div class="page-head"><div><h1>Settings</h1><div class="sub">These settings are kept on this device.</div></div></div>
-    <div class="stack">
-      <div class="panel stack"><h2>Display</h2>
+    <div class="page-head"><div><h1>Settings</h1><div class="sub">Kept on this device. Tap a group to open it.</div></div></div>
+    <div class="stack groups">
+      ${group('display', 'Display', `${v.units === 'imperial' ? 'Imperial' : 'Metric'} · ${{ system: 'Match device', dark: 'Dark', light: 'Light' }[v.theme]}`, `
         <div class="field"><span class="label">Units</span>${seg('s-units', [['metric', 'Metric (mm)'], ['imperial', 'Imperial (in)']], v.units)}</div>
-        <div class="field"><span class="label">Theme</span>${seg('s-theme', [['system', 'Match device'], ['dark', 'Dark'], ['light', 'Light']], v.theme)}</div>
-      </div>
-      <div class="panel stack"><h2>Hands-free guidance</h2>
+        <div class="field"><span class="label">Theme</span>${seg('s-theme', [['system', 'Match device'], ['dark', 'Dark'], ['light', 'Light']], v.theme)}</div>`)}
+      ${group('sound', 'Sound and guidance', `${{ both: 'Voice and beeps', voice: 'Voice only', beeps: 'Beeps only' }[v.audioMode]} · replies ${v.voiceReplies ? 'by hand or voice' : 'by hand'}`, `
         <div class="field"><span class="label">Sound</span>${seg('s-audio', [['both', 'Voice and beeps'], ['voice', 'Voice only'], ['beeps', 'Beeps only']], v.audioMode)}
-          <span class="hint">On iPhone, turn the ring/silent switch off and the volume up, or you will not hear the prompts.</span></div>
+          <span class="hint">On iPhone, turn the silent switch off and the volume up, or you will not hear the prompts.</span></div>
         <div><button class="btn sm" id="s-test">${icon('volume')}Test sound</button></div>
-        <div class="field"><span class="label">Start recording</span>${seg('s-start', [['seconds', 'After a delay'], ['beeps', 'After beeps'], ['strokes', 'After pedal strokes']], v.startMode)}
+        <label class="switch"><input type="checkbox" id="s-voice" ${v.voiceReplies ? 'checked' : ''}><span>Answer questions by voice too ("yes", "again", "no", "done")</span></label>
+        <span class="hint">Raising a hand and tapping always work. ${'SpeechRecognition' in window || 'webkitSpeechRecognition' in window ? 'This browser can listen.' : 'This browser can’t listen, so the app asks for a raised hand instead.'}</span>
+        <details class="more"><summary>${icon('chevR')}What the beeps mean</summary><dl class="kv" style="margin-top:8px">${BEEP_LEGEND.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl></details>`)}
+      ${group('recording', 'Recording', `Start after ${start} · record ${stop}`, `
+        <p class="small muted">These are the defaults; you can also change them on the riding screen, and the change is remembered.</p>
+        <div class="field"><span class="label">Start recording</span>${seg('s-start', [['strokes', 'After steady strokes'], ['seconds', 'After a delay'], ['beeps', 'After beeps']], v.startMode)}
           <div class="row wrap" style="margin-top:6px" id="s-start-n"></div></div>
         <div class="field"><span class="label">Stop recording</span>${seg('s-stop', [['seconds', 'After a time'], ['strokes', 'After pedal strokes']], v.stopMode)}
           <div class="row wrap" style="margin-top:6px" id="s-stop-n"></div></div>
-        <details class="more"><summary>${icon('chevR')}What the beeps mean</summary><dl class="kv" style="margin-top:8px">${BEEP_LEGEND.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl></details>
-      </div>
-      ${S.file ? `<div class="panel stack"><h2>Fit file</h2>
+        <div class="field"><span class="label">Camera</span>${seg('s-facing', [['environment', 'Back camera'], ['user', 'Front camera']], v.cameraFacing)}
+          <span class="hint">${v.cameraId ? 'A specific camera was chosen on the camera screen. <button class="btn sm quiet" id="s-camreset">Use the default</button>' : 'On a laptop or with several cameras, pick one with the Camera button on the camera screen.'}</span></div>
+        ${S.file ? `<label class="switch"><input type="checkbox" id="s-prompt" ${v.exportPrompt ? 'checked' : ''}><span>Ask to export after each session</span></label>` : ''}`)}
+      ${S.file ? group('file', 'Fit file', fileVal, `
         <dl class="kv"><dt>Name</dt><dd>${esc(S.file.name)} <button class="btn sm quiet" id="s-rename">Rename</button></dd>
           <dt>Contents</dt><dd>${plural(S.file.riders.length, 'rider')}, ${plural(allSessions().length, 'session')}</dd>
           <dt>Size</dt><dd id="s-size">…</dd>
           <dt>Last export</dt><dd>${S.meta.lastExportedAt ? esc(fmtDateTime(S.meta.lastExportedAt)) : 'Never'}${unexported() ? ' · <span class="status-warn">changes not exported</span>' : ''}</dd></dl>
-        <p class="small muted">The browser keeps a working copy, but it can clear its storage. The exported .tango file is the permanent copy: it holds every rider, session, video, snapshot and report.</p>
-        <div class="btn-row"><button class="btn primary" id="s-export">${icon('download')}Export (Full)</button><button class="btn" id="s-export-lite">Export Lite (no videos)</button><button class="btn" id="s-open">${icon('upload')}Open a file</button><button class="btn quiet" id="s-new">${icon('plus')}New file</button></div>
-        <label class="switch"><input type="checkbox" id="s-prompt" ${v.exportPrompt ? 'checked' : ''}><span>Offer to export after each session</span></label>
-      </div>
-      <div class="panel stack"><h2>Riders</h2>
+        <p class="small muted">The browser keeps a working copy, but it can clear its storage. The exported .tango file is the permanent copy: every rider, session, video, snapshot and report.</p>
+        <div class="btn-row"><button class="btn" id="s-export">${icon('download')}Export (Full)</button><button class="btn" id="s-export-lite">Export Lite (no videos)</button><button class="btn" id="s-open">${icon('upload')}Open a file</button><button class="btn quiet" id="s-new">${icon('plus')}New file</button></div>`) : ''}
+      ${S.file ? group('riders', 'Riders', S.file.riders.map((r) => r.name).join(', ') || 'None', `
         <div class="list">${S.file.riders.map((r) => `<a class="list-item" href="#/rider/${r.id}"><span class="avatar">${esc(initials(r.name))}</span><span class="grow"><span class="title">${esc(r.name)}</span><br><span class="sub">${esc(bikeSummary(r))}</span></span>${icon('chevR', 'chev')}</a>`).join('')}</div>
-        <div><a class="btn sm" href="#/rider/new">${icon('plus')}Add a rider</a></div>
-      </div>` : ''}
-      <div class="panel stack"><h2>About</h2>
+        <div><a class="btn sm" href="#/rider/new">${icon('plus')}Add a rider</a></div>`) : ''}
+      ${group('about', 'About', `${C.app.name} ${C.app.version}`, `
         <dl class="kv"><dt>Version</dt><dd>${esc(C.app.name)} ${esc(C.app.version)}</dd>
           <dt>This browser</dt><dd>${CAPS.canRecord ? '<span class="status-good">Can record and analyse</span>' : '<span class="status-warn">Review only</span>'}${CAPS.ios ? ' · iPhone/iPad' : ''}${CAPS.standalone ? ' · Home Screen app' : ''}</dd>
           <dt>Analysis engine</dt><dd id="s-model">Checking…</dd></dl>
         <p class="small muted">Tango Fitter is a self-fit guide, not medical advice. Stop and see a professional fitter or a clinician for pain, numbness, injury or a large difference between your left and right sides.</p>
-      </div>
+        <div><a class="btn sm quiet" href="#/intro?from=help">Show the introduction</a></div>`)}
     </div>`;
+  // One group open at a time, remembered on this device.
+  $$('details.group', main).forEach((d) => d.addEventListener('toggle', () => {
+    if (!d.open) return;
+    $$('details.group', main).forEach((o) => { if (o !== d) o.open = false; });
+    Settings.set('settingsOpen', d.dataset.g);
+  }));
   const bindSeg = (id, key, after) => $$(`#${id} button`, main).forEach((b) => (b.onclick = () => { Settings.set(key, b.dataset.v); if (after) after(); render(); }));
   bindSeg('s-units', 'units'); bindSeg('s-theme', 'theme', applyTheme); bindSeg('s-audio', 'audioMode'); bindSeg('s-start', 'startMode'); bindSeg('s-stop', 'stopMode');
+  bindSeg('s-facing', 'cameraFacing', () => Settings.set('cameraId', ''));
+  const cr = $('#s-camreset', main); if (cr) cr.onclick = () => { Settings.set('cameraId', ''); render(); };
+  $('#s-voice', main).onchange = (e) => Settings.set('voiceReplies', e.target.checked);
   const numField = (wrap, key, label, min, max) => {
     const f = el(`<label class="row small muted">${esc(label)} <input type="number" inputmode="numeric" min="${min}" max="${max}" value="${v[key]}" style="width:80px;min-height:36px;padding:6px 8px;border-radius:8px;border:1px solid var(--line-2);background:var(--bg)"></label>`);
     $('input', f).onchange = (e) => { const n = Math.max(min, Math.min(max, Math.round(Number(e.target.value) || v[key]))); e.target.value = n; Settings.set(key, n); };
     wrap.appendChild(f);
   };
   const sn = $('#s-start-n', main);
-  if (v.startMode === 'seconds') numField(sn, 'startSeconds', 'Seconds after you tap Start', 5, 60);
+  if (v.startMode === 'seconds') numField(sn, 'startSeconds', 'Seconds before recording', 5, 60);
   if (v.startMode === 'beeps') numField(sn, 'startBeeps', 'Number of beeps (one a second)', 3, 20);
   if (v.startMode === 'strokes') numField(sn, 'startStrokes', 'Steady strokes before recording', 3, 30);
   const st = $('#s-stop-n', main);
@@ -327,7 +377,7 @@ route('/settings', async (main) => {
     $('#s-open', main).onclick = () => openFileFlow();
     $('#s-new', main).onclick = () => newFileFlow();
     $('#s-prompt', main).onchange = (e) => Settings.set('exportPrompt', e.target.checked);
-    estimateSizes().then((sz) => { sizes = sz; const d = $('#s-size', main); if (d) d.textContent = `${mb(sz.full)} full · ${mb(sz.lite)} lite`; });
+    estimateSizes().then((sz) => { const d = $('#s-size', main); if (d) d.textContent = `${mb(sz.full)} full · ${mb(sz.lite)} lite`; });
   }
   (async () => {
     let cached = false;
@@ -343,6 +393,7 @@ route('/help', async (main) => {
     <div class="panel"><b>In short:</b> <span class="muted">put the bike on a trainer, stand the phone beside it so the bike sits in the outline on screen, mark eight points on the bike, then ride for about a minute while the app talks you through it. Make the one change it suggests, then retest. Fitting yourself or helping a friend, it works the same way.</span>
       <div style="margin-top:10px"><a class="btn sm" href="#/intro?from=help">Show the introduction again</a></div></div>
     <h2>Getting ready</h2>
+    <p><b>Fitting yourself:</b> set the phone up first, mark the bike with the saddle empty, then walk over and get on; the app waits and starts when it sees you pedalling steadily. <b>Helping a friend:</b> they can already be on the bike while you set up; the app notices and speaks to them. Either way the screens are the same.</p>
     <ul>
       <li><b>Trainer.</b> The bike must stay still and level. A rear-wheel or direct-drive trainer, or rollers with a front-wheel riser, all work.</li>
       <li><b>Which side.</b> Film the side without the chainring, so it doesn't hide the foot.</li>
@@ -359,19 +410,26 @@ route('/help', async (main) => {
     <p>When it asks a question (go again after a bad recording, record a second hand position, stop), answer by <b>raising your right hand above your head for yes</b> or your <b>left hand for no</b>, holding it for a moment; or say "yes" / "again" or "no" / "done" where the browser can listen; or tap the big buttons. It always says what it understood before acting. After a bad recording, doing nothing means it goes again, up to twice.</p>
     <details class="more"><summary>${icon('chevR')}What the beeps mean</summary><dl class="kv" style="margin-top:8px">${BEEP_LEGEND.map(([a2, b2]) => `<dt>${esc(a2)}</dt><dd>${esc(b2)}</dd>`).join('')}</dl></details>
     <h2>Reading the results</h2>
+    <p>The results page starts with <b>the one change</b> to make: how much, in both mm and inches, why, and what the retest should show. Below it is <b>your position</b> at the bottom of the pedal stroke with the angles drawn on (tap it to play the recording), then, on a retest, what changed on the bike and how the measurement moved. Playback and the set-up checks are folded away underneath; tap to open them.</p>
     <p>Each measurement is shown against a target range for your bike, riding goal and hand position: <span class="status-good">green</span> is in range, <span class="status-warn">yellow</span> is close, <span class="status-bad">red</span> is outside. Every value also carries a confidence (three bars) based on how clearly the joints were seen and how steady the value was from stroke to stroke. Low-confidence values are greyed out and never drive a recommendation.</p>
     <p>The app recommends <b>one change at a time</b>, in the order fitters use because changes interact: saddle height first, then saddle fore/aft. Amounts are a range in 5 mm steps (for example “raise the saddle 5–10 mm”), never more than 10 mm at a time. Make the change, then tap <b>Retest</b>: the bike marks show whether the change was made and how much the measurement moved. If three rounds of changes have not brought a measurement into range, the app says to see a professional fitter. Reach, drop, bar width and cleats arrive in the next version; their measurements are already shown.</p>
+    <h2>The bike's numbers</h2>
+    <p>The eight marks measure the bike itself: <b>saddle height</b> (from the centre of the cranks to the saddle nose), <b>saddle setback</b> (how far the saddle nose sits behind the pedals), <b>saddle-to-bar drop</b> (how far the hoods sit below the saddle nose) and <b>reach to the hoods</b> (how far forward they are from the saddle nose). They are measured along the bike, so a slightly tilted trainer doesn't change them. A tape measure from the centre of the bottom bracket to the saddle nose should agree within about 5 mm. On a retest they show what you actually changed, so the advice can say "one more step" or "still to do".</p>
+    <h2>Comparing sessions</h2>
+    <p>In <b>Sessions</b>, tap <b>Compare or delete</b>, pick two sessions and tap <b>Compare</b>: the measurements and the bike's numbers side by side with the change between them, and both positions drawn on top of each other (the earlier one in grey), lined up on the bottom bracket. The same screen deletes the sessions you pick, after asking.</p>
     <h2>Discomfort and safety</h2>
     <p>The questions about discomfort help the app point at the measurements most often associated with where you feel it. The app never assumes discomfort is caused by your bike fit: if the related measurements are in range it says so, and lists other common causes. If you report severe discomfort, discomfort that lasts after rides, numbness, or a recent injury, it recommends seeing a clinician or professional fitter before changing anything.</p>
     <p><b>Tango Fitter is a self-fit guide, not medical advice.</b></p>
     <h2>Fit files</h2>
-    <p>A fit file (.tango) holds riders, every session, the videos, snapshots and reports. It can hold a whole household. The app keeps a working copy on this device, but browsers can clear their storage, so export after each session (the app offers to). Open the file on any iPhone, iPad or computer; if the video format won't play on that device, the playback shows the tracked skeleton instead, with every measurement intact. <b>Lite</b> exports leave the videos out to keep the file small.</p>
+    <p>Export from the line at the bottom of each results page, or from Settings → Fit file. A fit file (.tango) holds riders, every session, the videos, snapshots and reports. It can hold a whole household. The app keeps a working copy on this device, but browsers can clear their storage, so export after each session (the app offers to). Open the file on any iPhone, iPad or computer; if the video format won't play on that device, the playback shows the tracked skeleton instead, with every measurement intact. <b>Lite</b> exports leave the videos out to keep the file small.</p>
     <h2>Troubleshooting</h2>
     <ul>
       <li><b>“Camera not allowed.”</b> Allow camera access for this site in the browser's settings (iPhone: Settings → Safari → Camera), then reload.</li>
       <li><b>No sound.</b> Volume up; iPhone silent switch off; tap Test sound in Settings.</li>
       <li><b>“I lost sight of your knee.”</b> Better light, more contrast between clothing and background, and check the whole body is in the frame.</li>
       <li><b>“Your feet are cut off.”</b> Move the phone further back or a little higher.</li>
+      <li><b>Head cut off.</b> It doesn't affect the measurements, but moving the phone a little further back keeps the whole rider in view.</li>
+      <li><b>Level light stays amber.</b> Hold the phone upright and sideways, not tipped back; the light says which way it's tilted. On a laptop it reads "check by eye".</li>
       <li><b>The hand-raise isn't noticed.</b> Raise the hand clearly above your head and hold it for a second or two; or tap the button.</li>
       <li><b>Scales disagree / wheel looks oval.</b> Turn the phone so it points straight at the side of the bike, and keep it level.</li>
       <li><b>First analysis is slow.</b> The analysis engine (about 35 MB) downloads once; after that it works offline.</li>

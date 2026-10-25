@@ -1,5 +1,6 @@
 /* ==========================================================================
-   Results: recommendation, discomfort notes, gauges, playback, report
+   Results (brief Part C): the change, your position, the retest, measurements,
+   your bike, what you told us, playback, set-up quality, report; and compare
    ========================================================================== */
 const STATUS_WORDS = { green: 'In range', yellowlow: 'A little low', yellowhigh: 'A little high', redlow: 'Low', redhigh: 'High', none: 'Unclear' };
 const statusWord = (g) => (g.status === 'green' ? STATUS_WORDS.green : g.status === 'none' ? (g.confidence === 'none' ? 'Not measured' : STATUS_WORDS.none) : STATUS_WORDS[g.status + g.side]);
@@ -16,38 +17,118 @@ function gaugeHTML(g, flagged) {
     bar = `<div class="gbar"><span class="y" style="left:${pct(ylo)};right:${(100 - parseFloat(pct(yhi))).toFixed(1)}%"></span><span class="g" style="left:${pct(band.green[0])};right:${(100 - parseFloat(pct(band.green[1]))).toFixed(1)}%"></span>${has ? `<span class="m" style="left:${pct(g.value)}"></span>` : ''}</div>`;
   }
   const sc = statusClass(g);
+  // Label, value, status word, bar; everything else on tap (brief C1.4).
   return `<button class="gauge ${flagged ? 'flagged' : ''}" data-metric="${g.metric}" aria-expanded="false">
     <div class="top"><span class="name">${esc(m.label)}</span><span class="tiny status-${sc}" style="font-weight:600">${esc(statusWord(g))}</span></div>
-    <div class="top"><span class="val ${TF.finite(g.value) ? '' : 'none'}">${TF.finite(g.value) ? esc(TF.fmtMetric(g.metric, g.value, u)) : '—'}</span><span class="tiny faint">${esc(m.where)}</span></div>
+    <div class="top"><span class="val ${TF.finite(g.value) ? '' : 'none'}">${TF.finite(g.value) ? esc(TF.fmtMetric(g.metric, g.value, u)) : '—'}</span><span class="conf ${g.confidence}" title="${esc(confLabel[g.confidence])}"><i></i><i></i><i></i></span></div>
     ${bar}
-    <div class="meta"><span>Target ${esc(TF.fmtBand(g.metric, band, u))}</span><span class="conf ${g.confidence}" title="${esc(confLabel[g.confidence])}"><i></i><i></i><i></i></span></div>
-    <div class="about" hidden>${esc(m.about)}${g.reason ? `<br><span class="faint">${esc(confLabel[g.confidence])}: ${esc(g.reason)}</span>` : `<br><span class="faint">${esc(confLabel[g.confidence])}.</span>`}${TF.finite(g.spread) && g.spread > 0 ? `<br><span class="faint">Stroke-to-stroke spread ±${esc(m.unit === 'mm' ? TF.fmtLength(g.spread / 2, u, 'adjust') : `${Math.round(g.spread / 2)}°`)}.</span>` : ''}</div>
+    <div class="about" hidden><b>Target ${esc(TF.fmtBand(g.metric, band, u))}</b> · ${esc(m.where)}<br>${esc(m.about)}<br><span class="faint">${esc(confLabel[g.confidence])}${g.reason ? `: ${esc(g.reason)}` : '.'}</span>${TF.finite(g.spread) && g.spread > 0 ? `<br><span class="faint">Stroke-to-stroke spread ±${esc(m.unit === 'mm' ? TF.fmtLength(g.spread / 2, u, 'adjust') : `${Math.round(g.spread / 2)}°`)}.</span>` : ''}</div>
   </button>`;
 }
+const gaugeGrid = (gauges, flagged) => `<div class="gauges">${gauges.slice().sort((a, b) => (flagged.has(b.metric) ? 1 : 0) - (flagged.has(a.metric) ? 1 : 0) || (b.status === 'red' ? 2 : b.status === 'yellow' ? 1 : 0) - (a.status === 'red' ? 2 : a.status === 'yellow' ? 1 : 0)).map((g) => gaugeHTML(g, flagged.has(g.metric))).join('')}</div>`;
 
-function recommendationHTML(s, res) {
+/** The amount in the other unit system, for the line under the action. */
+function otherUnits(amount) {
+  if (!amount) return '';
+  const other = Settings.v.units === 'imperial' ? 'metric' : 'imperial';
+  return TF.fmtRange(amount.lo, amount.hi, other);
+}
+
+/** 1. The change (brief C1.1). */
+function changeHTML(s, res) {
   const rec = res.recommendation, gate = res.gate, cal = s.clips[0] && s.clips[0].calibration;
   const prof = gate.gated ? `<span class="tag warn">For discussion with a professional</span>` : '';
-  const later = rec.later.length ? `<div class="hr"></div><div class="caption">Coming in the next version</div><div class="next-list">${rec.later.map((l, i) => `<div class="it"><span class="n">${i + 1}</span><div><b>${esc(l.text)}</b><div class="small muted">${esc(l.why)}</div></div></div>`).join('')}</div>` : '';
-  if (rec.current) {
-    const c = rec.current;
-    return `<div class="panel accent reco">
-      <div class="eyebrow"><span class="caption">Your next change</span><span class="tag ${c.strength === 'recommended' ? 'accent' : ''}">${c.strength === 'recommended' ? 'Recommended' : 'Fine-tune'}</span>${prof}</div>
-      <div class="action">${esc(c.text)}</div>
+  const c = rec.current;
+  if (c) {
+    const stop = c.kind === 'stop';
+    const stillToDo = c.history && c.history.status === 'notMade';
+    const amt = c.amount ? `<p class="amount">${esc(TF.fmtRange(c.amount.lo, c.amount.hi, Settings.v.units))} <span class="faint">· ${esc(otherUnits(c.amount))}</span></p>` : '';
+    return `<div class="panel ${stop ? 'warnpanel' : 'accent'} reco change" id="change">
+      <div class="eyebrow"><span class="caption">${stop ? 'Time for a professional' : stillToDo ? 'Still to do' : 'Your next change'}</span>${!stop ? `<span class="tag ${c.strength === 'recommended' ? 'accent' : ''}">${c.strength === 'recommended' ? 'Recommended' : 'Fine-tune'}</span>` : ''}${prof}</div>
+      <div class="action big">${esc(c.text)}</div>
+      ${amt}
       <p class="why">${esc(c.why)}</p>
+      ${c.expect ? `<p class="expect">${icon('refresh')}<span>${esc(c.expect)}</span></p>` : ''}
       ${c.note ? `<p class="note">${esc(c.note)}</p>` : ''}
-      <p class="small faint" style="margin-top:10px">${esc(c.howTo)}</p>
-      <div class="btn-row">${s.sample ? '' : `<a class="btn primary" href="#/session/new?retest=${s.id}">${icon('refresh')}I've made this change — retest</a>`}<button class="btn quiet" data-goto="gauges">See the measurements</button></div>
+      ${c.howTo ? `<p class="small faint" style="margin-top:8px">${esc(c.howTo)}</p>` : ''}
+      ${!stop && !s.sample ? `<div class="btn-row"><a class="btn primary" href="#/session/new?retest=${s.id}" id="rs-retest">${icon('refresh')}I've made this change — retest</a></div>` : ''}
       ${rec.queued.length ? `<div class="hr"></div><div class="caption">After that</div><div class="next-list">${rec.queued.map((q, i) => `<div class="it"><span class="n">${i + 2}</span><div>${esc(q.text)}<div class="small muted">${esc(q.why)}</div></div></div>`).join('')}</div>` : ''}
-      ${later}
-      ${!cal ? `<div class="banner warn" style="margin-top:12px">${icon('alert')}<div class="grow">This session was analysed without the calibration taps, so there is no knee-over-pedal measurement and no amounts in millimetres.</div></div>` : ''}
+      ${!cal ? `<div class="banner warn" style="margin-top:12px">${icon('alert')}<div class="grow">This session was recorded without the bike marks, so there is no knee-over-pedal measurement and no amounts in millimetres.</div></div>` : ''}
     </div>`;
   }
-  return `<div class="panel reco ok">
+  return `<div class="panel reco ok change" id="change">
     <div class="eyebrow"><span class="caption">Saddle position</span>${prof}</div>
-    <div class="action">Saddle height and fore/aft are in range</div>
-    <p class="why">Nothing to change on the saddle. ${rec.later.length ? 'The measurements below include reach and drop, which the next version will advise on.' : 'Your measurements are within the target ranges for your bike and riding style.'}</p>
-    ${later}</div>`;
+    <div class="action big">Saddle height and fore/aft are in range</div>
+    <p class="why">Nothing to change on the saddle. ${rec.later.length ? 'Reach and drop are shown below; the next version will advise on them.' : 'Your measurements are within the target ranges for your bike and riding style.'}</p>
+  </div>`;
+}
+
+/** A bike number as shown, and the change between two (rounded from the true difference, as in the advice).
+    A negative drop (bars higher than the saddle) is shown as "bars above the saddle". */
+function bikeShown(k, v, barsAbove) {
+  if (!TF.finite(v)) return { text: '—', n: NaN };
+  if (k === 'effectiveSeatAngle') return { text: `${v.toFixed(1)}°`, n: v };
+  const mm = barsAbove && k === 'drop' ? -v : v;
+  // The change is rounded from the true difference, so it matches "after raising the saddle 10 mm" in the advice.
+  return { text: U.len(Settings.v.units === 'imperial' ? mm : Math.round(mm), 'length'), n: mm };
+}
+function bikeDeltaText(k, a, b) {
+  if (!TF.finite(a) || !TF.finite(b)) return '';
+  const d = b - a;
+  if (k === 'effectiveSeatAngle') return Math.abs(d) < 0.3 ? '' : `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(1)}°`;
+  return Math.abs(d) < 2 ? '' : TF.fmtSignedMm(Math.round(d), Settings.v.units);
+}
+const angleDelta = (a, b) => { const d = Math.round(b) - Math.round(a); return d === 0 ? 'no change' : `${d > 0 ? '+' : '−'}${Math.abs(d)}°`; };
+
+/** 5. Your bike: the mark-derived numbers, each with what it means. */
+function bikeHTML(bm, prevBm) {
+  if (!bm) return '';
+  const u = Settings.v.units;
+  const meaning = { saddleHeight: 'From the centre of the cranks to the saddle nose.', saddleSetback: 'How far the saddle nose sits behind the pedals.', drop: 'How far the hoods sit below the saddle nose.', reach: 'How far forward the hoods are from the saddle nose.', effectiveSeatAngle: 'How steeply the saddle sits above the pedals.' };
+  void u;
+  const rows = Object.keys(TF.BIKE_MEASURES).map((k) => {
+    const v = bm[k]; if (!TF.finite(v)) return '';
+    const above = k === 'drop' && v < 0;
+    const now = bikeShown(k, v, above);
+    let label = TF.BIKE_MEASURES[k].label, mean = meaning[k];
+    if (above) { label = 'Bars above the saddle'; mean = 'How far the hoods sit higher than the saddle nose.'; }
+    const before = prevBm ? bikeShown(k, prevBm[k], above) : null;
+    const dt = before ? bikeDeltaText(k, before.n, now.n) : '';
+    const val = now.text;
+    const delta = dt ? `<span class="tag">${esc(dt)} since last time</span>` : '';
+    return `<div class="bike-row"><div><b>${esc(label)}</b><div class="small muted">${esc(mean)}</div></div><div class="bv">${esc(val)}${delta}</div></div>`;
+  }).join('');
+  return `<div class="section" id="bike"><div class="section-head"><h2>Your bike</h2><span class="small faint">Measured from the eight marks</span></div><div class="panel bike-list">${rows}</div></div>`;
+}
+
+/** The analysis of a session's second hand position, cached separately. */
+function secondAnalysis(s) {
+  const key = `${s.id}:2`;
+  if (S.cache.has(key)) return S.cache.get(key);
+  const c = s.secondClip;
+  if (!c || !c.frames || !c.frames.length) return null;
+  const a = TF.analyseClip(Object.assign({}, c, { calibration: c.calibration ? JSON.parse(JSON.stringify(c.calibration)) : null }));
+  S.cache.set(key, a);
+  return a;
+}
+
+/** The retest strip (brief C1.3), or '' when this is not a retest. */
+function retestStrip(r, s, res) {
+  const prev = s.retestOf ? findSession(s.retestOf) : null;
+  if (!prev) return '';
+  const pr = sessionResults(prev.rider, prev.session);
+  if (!pr) return '';
+  const pm = pr.recommendation && pr.recommendation.current ? pr.recommendation.current.metric : 'kneeExtension';
+  const before = pr.gauges.find((g) => g.metric === pm), after = res.gauges.find((g) => g.metric === pm);
+  const pc = prev.session.clips[0] || {}, nc = s.clips[0] || {};
+  const sum = TF.retestSummary({ cal: pc.calibration && Object.assign({}, pc.calibration, { bikeMeasures: prev.session.bikeMeasures || (pc.calibration || {}).bikeMeasures }) },
+    { cal: nc.calibration && Object.assign({}, nc.calibration, { bikeMeasures: s.bikeMeasures || (nc.calibration || {}).bikeMeasures }) }, pm, before && before.value, after && after.value, Settings.v.units);
+  const line = [sum.bike, sum.metric].filter(Boolean).join(' · ');
+  return `<div class="panel tight retest" id="retest"><div class="caption">Since ${esc(fmtDate(prev.session.created))}</div>
+    <p class="delta">${esc(line.charAt(0).toUpperCase() + line.slice(1))}</p>
+    ${sum.cameraMoved ? `<p class="small muted">The camera had moved, so the bike numbers were measured afresh; small differences may be the camera, not the bike.</p>` : ''}
+    ${before && after ? `<div class="ba"><div><div class="tiny faint">Before</div>${gaugeHTML(before, false)}</div><div><div class="tiny faint">After</div>${gaugeHTML(after, false)}</div></div>` : ''}
+    <a class="btn sm quiet" href="#/session/${prev.session.id}">Open the earlier session</a></div>`;
 }
 
 route('/session/:id', async (main, { id }) => {
@@ -65,61 +146,148 @@ route('/session/:id', async (main, { id }) => {
     return;
   }
   const flagged = new Set(res.highlighted);
-  const prev = s.retestOf ? findSession(s.retestOf) : null;
-  let retestHTML = '';
-  if (prev) {
-    const pr = sessionResults(prev.rider, prev.session);
-    const pm = pr && pr.recommendation && pr.recommendation.current ? pr.recommendation.current.metric : 'kneeExtension';
-    const before = pr && pr.gauges.find((g) => g.metric === pm), after = res.gauges.find((g) => g.metric === pm);
-    if (before && after) {
-      retestHTML = `<div class="panel tight"><div class="caption">Retest of ${esc(fmtDateTime(prev.session.created))}</div>
-        <p class="delta" style="margin-top:6px">${esc(TF.METRICS[pm].label)}: <b>${esc(TF.fmtMetric(pm, before.value, Settings.v.units))}</b> → <b>${esc(TF.fmtMetric(pm, after.value, Settings.v.units))}</b>
-        <span class="tag ${statusClass(after)}" style="margin-left:6px">${esc(statusWord(after))}</span></p>
-        ${s.change ? `<p class="small muted" style="margin-top:4px">${s.change.made === 'yes' ? `Change made: ${esc(s.change.action)}` : s.change.made === 'different' ? `Different change: ${esc(s.change.note || 'not described')}` : 'No change made since last time.'}</p>` : ''}
-        <a class="btn sm quiet" href="#/session/${prev.session.id}" style="margin-top:6px">Open the earlier session</a></div>`;
-    }
-  }
   const cal = clip.calibration;
+  const prevS = s.retestOf ? findSession(s.retestOf) : null;
+  const wide = window.matchMedia('(min-width: 900px)').matches;
+  // Second hand position, when recorded.
+  let secondHTML = '';
+  const a2 = secondAnalysis(s);
+  if (a2 && a2.ok) {
+    const res2 = TF.buildResults(a2, s.profile || r.profile, s.secondClip.hand, s.discomfort, Settings.v.units);
+    secondHTML = `<div class="section" id="second"><div class="section-head"><h2>${esc(TF.HAND_POSITIONS[s.secondClip.hand] || 'Second position')}</h2><span class="small faint">Your second hand position, recorded in the same session</span></div>
+      ${gaugeGrid(res2.gauges.filter((g) => ['hipClosed', 'backAngle', 'shoulder', 'elbow', 'wrist'].includes(g.metric)), new Set())}
+      <p class="small faint" style="margin-top:8px">Saddle advice uses your main position (${esc(TF.HAND_POSITIONS[clip.hand] || '')}); this shows how the upper body changes in the ${esc((TF.HAND_POSITIONS[s.secondClip.hand] || '').toLowerCase())}.</p></div>`;
+  }
   const u = Settings.v.units;
   main.innerHTML = `
     <div class="page-head"><div><h1>Fit results</h1><div class="sub">${esc(fmtDateTime(s.created))} · ${esc(r.name)} · ${esc(TF.HAND_POSITIONS[clip.hand] || '')} · ${Math.round(res.cadence)} rpm · ${plural(res.strokes, 'stroke')}</div></div>
       <div class="row">${s.sample ? '<span class="tag teal">Sample from a simulated rider</span>' : ''}${s.retestOf ? '<span class="tag">Retest</span>' : ''}</div></div>
     ${res.gate.gated ? `<div class="banner warn" style="margin-bottom:14px">${icon('alert')}<div class="grow"><b>Please see a professional before changing your bike.</b> You mentioned ${esc(res.gate.reasons.join(', '))}. A clinician or professional fitter should look at that first. The measurements are below; treat any suggestion as something to discuss with them.</div></div>` : ''}
-    <div class="two">
-      <div class="stack">
-        ${recommendationHTML(s, res)}
-        ${retestHTML}
-        ${res.discomfortNotes.length ? `<div class="panel stack"><h2>What you told us</h2>${res.discomfortNotes.map((n) => `<div><b>${esc(n.label)}</b> <span class="tag ${n.level === 'severe' ? 'bad' : n.level === 'moderate' ? 'warn' : ''}">${esc(LEVEL_LABELS[n.level])}</span>${n.pattern ? ` <span class="tiny faint">${esc(PATTERN_LABELS[n.pattern])}</span>` : ''}<p class="small muted" style="margin-top:4px">${esc(n.text)}</p></div>`).join('')}</div>` : ''}
-      </div>
-      <div class="stack">
-        <div id="player-wrap"></div>
-      </div>
-    </div>
-    <div class="section" id="gauges"><div class="section-head"><h2>Measurements</h2><span class="small faint">Tap a measurement for details</span></div>
-      <div class="gauges">${res.gauges.map((g) => gaugeHTML(g, flagged.has(g.metric))).join('')}</div></div>
-    <div class="section"><h2>Set-up quality</h2><div class="panel">
+    ${changeHTML(s, res)}
+    <div class="section" id="position"><div class="section-head"><h2>Your position</h2><span class="small faint">Bottom of the stroke · tap to play</span></div>
+      <button class="position-shot" id="rs-pos" aria-label="Your position at the bottom of the stroke; tap to open playback" style="aspect-ratio:${clip.width || 16}/${clip.height || 9}"><span class="spinner"></span></button></div>
+    ${retestStrip(r, s, res)}
+    <div class="section" id="gauges"><div class="section-head"><h2>Measurements</h2><span class="small faint">Tap one for the target and details</span></div>
+      ${gaugeGrid(res.gauges, flagged)}</div>
+    ${bikeHTML(s.bikeMeasures, prevS ? prevS.session.bikeMeasures : null)}
+    ${secondHTML}
+    ${res.discomfortNotes.length ? `<div class="section"><h2>What you told us</h2><div class="panel stack">${res.discomfortNotes.map((n) => `<div><b>${esc(n.label)}</b> <span class="tag ${n.level === 'severe' ? 'bad' : n.level === 'moderate' ? 'warn' : ''}">${esc(LEVEL_LABELS[n.level])}</span>${n.pattern ? ` <span class="tiny faint">${esc(PATTERN_LABELS[n.pattern])}</span>` : ''}<p class="small muted" style="margin-top:4px">${esc(n.text)}</p></div>`).join('')}</div></div>` : ''}
+    <details class="section fold" id="playback" ${wide ? 'open' : ''}><summary>${icon('chevR')}<h2>Playback</h2></summary><div id="player-wrap"></div></details>
+    <details class="section fold" id="quality"><summary>${icon('chevR')}<h2>Set-up quality</h2></summary><div class="panel">
       <dl class="kv">
-        ${cal ? `<dt>Scale</dt><dd>${(cal.pxPerMm).toFixed(3)} px/mm; crank and wheel agree within ${(cal.agreement * 100).toFixed(1)}%</dd><dt>Camera square</dt><dd>Rear wheel ${Math.round(cal.squareRatio * 100)}% as wide as tall</dd><dt>Bike level</dt><dd>${Math.abs(cal.tiltDeg).toFixed(1)}°${Math.abs(cal.tiltDeg) > 0.05 ? (cal.tiltDeg > 0 ? ' front high (corrected)' : ' front low (corrected)') : ''}</dd>`
-    : '<dt>Calibration</dt><dd class="status-warn">Skipped: no millimetre measurements</dd>'}
-        <dt>Recording</dt><dd>${clip.width}×${clip.height}, ${Math.round(clip.fps || 30)} fps, ${(clip.durationS || 0).toFixed(1)} s, analysed at ${clip.analysedFps} fps${clip.analysisSeconds ? ` in ${clip.analysisSeconds} s` : ''}</dd>
-        <dt>Tracking</dt><dd>${esc(a.side === 'left' ? 'Left' : 'Right')} side towards the camera; pedal stroke from ${a.phaseSource === 'crank' ? 'the crank (calibrated)' : 'the foot path'}</dd>
+        ${cal ? `<dt>Scale</dt><dd>${(cal.pxPerMm).toFixed(3)} pixels per mm; crank and wheel agree within ${(cal.agreement * 100).toFixed(1)}%</dd><dt>Camera square</dt><dd>Rear wheel ${Math.round(cal.squareRatio * 100)}% as wide as tall</dd><dt>Bike level</dt><dd>${Math.abs(cal.tiltDeg).toFixed(1)}°${Math.abs(cal.tiltDeg) > 0.05 ? (cal.tiltDeg > 0 ? ' front high (corrected)' : ' front low (corrected)') : ''}</dd>${cal.distance && TF.finite(cal.distance.metres) ? `<dt>Camera distance</dt><dd>about ${cal.distance.metres.toFixed(1)} m</dd>` : ''}`
+    : '<dt>Bike marks</dt><dd class="status-warn">None: no millimetre measurements</dd>'}
+        <dt>Marked with</dt><dd>${s.markedWithRider ? 'the rider on the bike' : 'the saddle empty'}</dd>
+        <dt>Recording</dt><dd>${clip.width}×${clip.height}, ${Math.round(clip.fps || 30)} frames a second, ${(clip.durationS || 0).toFixed(1)} s, analysed at ${clip.analysedFps} frames a second${clip.analysisSeconds ? ` in ${clip.analysisSeconds} s` : ''}</dd>
+        <dt>Tracking</dt><dd>${esc(a.side === 'left' ? 'Left' : 'Right')} side towards the camera; pedal stroke from ${a.phaseSource === 'crank' ? 'the crank' : 'the foot path'}</dd>
         <dt>Bike</dt><dd>${esc(U.len(s.bike.crankLength, 'length'))} cranks, ${esc(s.bike.wheel === 'custom' ? U.len(s.bike.wheelDiameterMm, 'length') + ' wheel' : (TF.WHEELS[s.bike.wheel] || {}).label || '')}</dd>
         ${clip.level ? `<dt>Phone level</dt><dd>${Math.abs(clip.level.pitch).toFixed(1)}° ${clip.level.pitch >= 0 ? 'up' : 'down'}, rotated ${Math.abs(clip.level.roll).toFixed(1)}°</dd>` : ''}
-      </dl></div></div>
+        ${s.replies && s.replies.length ? `<dt>Answers</dt><dd>${s.replies.map((x) => `${esc({ gesture: 'hand raised', voice: 'voice', tap: 'tap', auto: 'no answer' }[x.via] || x.via)}`).join(', ')}</dd>` : ''}
+      </dl>${a.notes && a.notes.length ? `<ul class="small muted" style="margin-top:8px;padding-left:18px">${a.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}</div></details>
     <div class="section btn-row">
       <button class="btn" id="rs-report">${icon('report')}Report (PDF)</button>
-      <button class="btn" id="rs-export">${icon('download')}Export fit file</button>
       <span style="flex:1"></span>
       <button class="btn danger" id="rs-del">${icon('trash')}Delete session</button>
     </div>
+    <div class="export-line ${unexported() ? 'warn' : ''}">${icon(unexported() ? 'alert' : 'check')}<span class="grow">${unexported() ? 'Not exported yet: export the fit file to keep a permanent copy.' : `Fit file exported ${S.meta.lastExportedAt ? esc(fmtDateTime(S.meta.lastExportedAt)) : ''}.`}</span><button class="btn sm" id="rs-export">${icon('download')}Export</button></div>
     <p class="small faint section">Tango Fitter is a self-fit guide, not medical advice. Measurements depend on camera placement and lighting; suggestions are starting points to confirm with a retest. Stop and see a professional for pain, numbness, injury or a large left–right difference.</p>`;
   $$('.gauge', main).forEach((g) => (g.onclick = () => { const ab = $('.about', g); ab.hidden = !ab.hidden; g.setAttribute('aria-expanded', String(!ab.hidden)); }));
-  $$('[data-goto]', main).forEach((b) => (b.onclick = () => $('#' + b.dataset.goto, main).scrollIntoView({ behavior: 'smooth' })));
   $('#rs-report', main).onclick = () => makeReport(r, s);
   $('#rs-export', main).onclick = () => exportFlow();
   $('#rs-del', main).onclick = () => deleteSession(r, s);
+  const pb = $('#playback', main);
+  $('#rs-pos', main).onclick = () => { pb.open = true; pb.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  void u;
+  // Your position: the bottom-of-stroke frame, with the video when it plays here.
+  positionShot(a, s).then((url) => { const b = $('#rs-pos', main); if (b && url) b.innerHTML = `<img src="${url}" alt="">`; else if (b) b.innerHTML = '<span class="small faint">Not available</span>'; });
   await mountPlayer($('#player-wrap', main), r, s, a);
 }, { needsFile: true, nav: 'fit' });
+
+/** The bottom-of-stroke frame with the skeleton and angles, as an image URL. */
+async function positionShot(a, s) {
+  const clip = s.clips[0];
+  const bdc = (a.strokeFrames.bdc || []).find((x) => x >= 0);
+  if (!(bdc >= 0)) return null;
+  const vid = await videoAt(clip, a.smoothed[bdc].t);
+  const c = await renderFrameCanvas(a, clip, bdc, vid ? vid.video : null, {});
+  if (vid) vid.done();
+  return c.toDataURL('image/jpeg', 0.86);
+}
+/** A clip's video seeked to t, or null when it can't play here. */
+async function videoAt(clip, t) {
+  if (!clip.file) return null;
+  const b = await getBlob(clip.file);
+  if (!b || (clip.mime && document.createElement('video').canPlayType(clip.mime.split(';')[0]) === '')) return null;
+  const v = document.createElement('video'); v.muted = true; v.playsInline = true; const url = URL.createObjectURL(b); v.src = url;
+  const ok = await new Promise((res) => { v.onloadeddata = () => res(true); v.onerror = () => res(false); setTimeout(() => res(false), 5000); });
+  if (!ok) { URL.revokeObjectURL(url); return null; }
+  await new Promise((res) => { v.onseeked = res; v.currentTime = t; setTimeout(res, 2000); });
+  return { video: v, done: () => URL.revokeObjectURL(url) };
+}
+
+/* ---------- compare two sessions (brief C2) ---------- */
+route('/compare/:a/:b', async (main, { a: ida, b: idb }) => {
+  const fa = findSession(ida), fb = findSession(idb);
+  if (!fa || !fb) { go('#/sessions'); return; }
+  // Older on the left, newer on the right.
+  const [older, newer] = fa.session.created <= fb.session.created ? [fa, fb] : [fb, fa];
+  const ra = sessionResults(older.rider, older.session), rb = sessionResults(newer.rider, newer.session);
+  const aa = sessionAnalysis(older.session), ab = sessionAnalysis(newer.session);
+  if (!ra || !rb) { toast('One of these sessions has no usable measurements.'); go('#/sessions'); return; }
+  const u = Settings.v.units;
+  const rows = TF.METRIC_ORDER.map((k) => {
+    const ga = ra.gauges.find((g) => g.metric === k), gb = rb.gauges.find((g) => g.metric === k);
+    const d = TF.finite(ga.value) && TF.finite(gb.value) ? gb.value - ga.value : NaN;
+    const ch = !TF.finite(d) ? '—' : TF.METRICS[k].unit === 'mm' ? (Math.round(gb.value) === Math.round(ga.value) ? 'no change' : TF.fmtSignedMm(Math.round(gb.value) - Math.round(ga.value), u)) : angleDelta(ga.value, gb.value);
+    const cell = (g) => `<td><span class="dot-s ${statusClass(g)}"></span>${TF.finite(g.value) ? esc(TF.fmtMetric(k, g.value, u)) : '—'}</td>`;
+    return `<tr><th>${esc(TF.METRICS[k].label)}<div class="tiny faint">Target ${esc(TF.fmtBand(k, gb.band, u))}</div></th>${cell(ga)}${cell(gb)}<td class="ch">${esc(ch)}</td></tr>`;
+  }).join('');
+  const bmA = older.session.bikeMeasures, bmB = newer.session.bikeMeasures;
+  const bikeRows = bmA && bmB ? ['saddleHeight', 'saddleSetback', 'drop', 'reach'].map((k) => {
+    const above = k === 'drop' && bmA[k] < 0 && bmB[k] < 0;
+    const a1 = bikeShown(k, bmA[k], above), b1 = bikeShown(k, bmB[k], above);
+    return `<tr><th>${esc(above ? 'Bars above the saddle' : TF.BIKE_MEASURES[k].label)}</th><td>${esc(a1.text)}</td><td>${esc(b1.text)}</td><td class="ch">${esc(bikeDeltaText(k, a1.n, b1.n) || 'no change')}</td></tr>`;
+  }).join('') : '';
+  // Same day: show the times so the two columns can be told apart.
+  const sameDay = older.session.created.slice(0, 10) === newer.session.created.slice(0, 10);
+  const when = (x) => (sameDay ? fmtDateTime(x.session.created) : fmtDate(x.session.created));
+  const head = `<tr><th></th><th>${esc(when(older))}<div class="tiny faint">${esc(TF.HAND_POSITIONS[(older.session.clips[0] || {}).hand] || '')}</div></th><th>${esc(when(newer))}<div class="tiny faint">${esc(TF.HAND_POSITIONS[(newer.session.clips[0] || {}).hand] || '')}</div></th><th>Change</th></tr>`;
+  main.innerHTML = `
+    <div class="page-head"><div><h1>Compare</h1><div class="sub">${esc(older.rider.name)}${older.rider !== newer.rider ? ` and ${esc(newer.rider.name)}` : ''} · ${esc(fmtDate(older.session.created))} and ${esc(fmtDate(newer.session.created))}</div></div></div>
+    <div class="panel tight"><canvas class="compare-shot" id="cmp-shot" style="aspect-ratio:${(newer.session.clips[0] || {}).width || 16}/${(newer.session.clips[0] || {}).height || 9}"></canvas>
+      <p class="small muted" style="margin-top:8px"><span class="key orange"></span>${esc(when(newer))} <span class="key grey"></span>${esc(when(older))} (earlier) · both at the bottom of the stroke, lined up on the bottom bracket</p></div>
+    <div class="section"><h2>Measurements</h2><div class="panel table-wrap"><table class="cmp">${head}${rows}</table></div></div>
+    ${bikeRows ? `<div class="section"><h2>The bike</h2><div class="panel table-wrap"><table class="cmp">${head}${bikeRows}</table></div></div>` : ''}
+    <div class="section btn-row"><a class="btn" href="#/session/${older.session.id}">Open the earlier session</a><a class="btn" href="#/session/${newer.session.id}">Open the later session</a><a class="btn quiet" href="#/sessions">Back to sessions</a></div>`;
+  drawCompare($('#cmp-shot', main), aa, older.session, ab, newer.session);
+}, { needsFile: true, nav: 'sessions' });
+
+/** The two bottom-of-stroke skeletons overlaid: the older as a grey ghost on the newer, aligned on the bottom bracket and scaled to the same mm. */
+function drawCompare(canvas, aOld, sOld, aNew, sNew) {
+  const cOld = sOld.clips[0], cNew = sNew.clips[0];
+  const b = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round((b.width || 600) * dpr); canvas.height = Math.round(canvas.width * cNew.height / cNew.width);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#0A1220'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const k = canvas.width / cNew.width;
+  const iNew = (aNew.strokeFrames.bdc || []).find((x) => x >= 0), iOld = (aOld.strokeFrames.bdc || []).find((x) => x >= 0);
+  if (!(iNew >= 0)) return;
+  drawOverlay(ctx, aNew, cNew, iNew, { scale: k, angles: false, keypoint: true, skeleton: false });
+  if (!(iOld >= 0)) { drawOverlay(ctx, aNew, cNew, iNew, { scale: k, angles: false, bike: false }); return; }
+  // Map the older frame into the newer one: same bottom bracket, same pixels per mm, same facing.
+  const calO = cOld.calibration, calN = cNew.calibration;
+  const bbO = calO ? (calO.bbRefined || calO.taps.bb) : null, bbN = calN ? (calN.bbRefined || calN.taps.bb) : null;
+  const sc = calO && calN ? calN.pxPerMm / calO.pxPerMm : 1;
+  const flip = aOld.facing !== aNew.facing ? -1 : 1;
+  const map = (p) => (bbO && bbN ? { x: (bbN.x + flip * (p.x - bbO.x) * sc) * k, y: (bbN.y + (p.y - bbO.y) * sc) * k } : { x: p.x * k, y: p.y * k });
+  const j = aOld.smoothed[iOld] && aOld.smoothed[iOld].j; if (!j) return;
+  ctx.strokeStyle = 'rgba(176,190,210,.8)'; ctx.lineWidth = Math.max(4, canvas.width / 160); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const [x, y] of [['shoulder', 'elbow'], ['elbow', 'wrist'], ['shoulder', 'hip'], ['hip', 'knee'], ['knee', 'ankle'], ['ankle', 'heel'], ['heel', 'toe'], ['ankle', 'toe']]) {
+    if (!j[x] || !j[y]) continue; const p = map(j[x]), q = map(j[y]); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+  }
+  // Redraw the newer on top so it stays clear.
+  drawOverlay(ctx, aNew, cNew, iNew, { scale: k, angles: false, bike: false });
+}
 
 async function deleteSession(r, s) {
   if (!(await confirmDanger('Delete this session?', `The session from ${esc(fmtDateTime(s.created))}, with its video, snapshots and reports, is removed from this device. Copies already exported are not affected.`, 'Delete session'))) return;
@@ -321,7 +489,7 @@ async function makeReport(r, s) {
   toast('Preparing the report…', 2000);
   try {
     const jsPDF = await getJsPDF();
-    const a = sessionAnalysis(s), clip = s.clips[0];
+    const a = sessionAnalysis(s), clip = s.clips[0], cal0 = clip.calibration;
     const prof = s.profile || r.profile;
     const resM = TF.buildResults(a, prof, clip.hand, s.discomfort, 'metric');
     const resI = TF.buildResults(a, prof, clip.hand, s.discomfort, 'imperial');
@@ -358,6 +526,19 @@ async function makeReport(r, s) {
       if (rcI && rcI.text !== rc.text) y += txt(`Imperial: ${rcI.text}`, M, y + 2, { size: 9.5, color: ink2 });
       y += txt(rc.why, M, y + 6, { size: 10, color: ink2 }) + 4;
       if (rc.note) y += txt(rc.note, M, y + 4, { size: 9.5, color: ink2 }) + 2;
+      // What to do next (brief C3).
+      if (rc.kind !== 'stop') {
+        const steps = [rc.howTo, `Make the change${rc.amount ? ` (${TF.fmtRange(rc.amount.lo, rc.amount.hi, 'metric')}, ${TF.fmtRange(rc.amount.lo, rc.amount.hi, 'imperial')})` : ''}.`, 'Ride for a few minutes to settle in, then start a retest with the camera in the same place.', rc.expect].filter(Boolean);
+        const boxW = PW - 2 * M - 20;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+        const h = 26 + steps.reduce((t, x) => t + doc.splitTextToSize(`• ${x}`, boxW).length * 9.5 * 1.25 + 3, 0);
+        need(h + 14); y += 8;
+        doc.setFillColor(255, 240, 230); doc.roundedRect(M, y - 4, PW - 2 * M, h, 6, 6, 'F');
+        txt('What to do next', M + 10, y + 12, { size: 9.5, bold: true, color: orange, width: boxW });
+        let yy = y + 28;
+        for (const x of steps) yy += txt(`• ${x}`, M + 10, yy, { size: 9.5, color: ink2, width: boxW }) + 3;
+        y += h + 4;
+      }
       const nexts = [...resM.recommendation.queued.map((q) => q.text), ...resM.recommendation.later.map((l) => `${l.text} (next version)`)];
       if (nexts.length) y += txt(`After that: ${nexts.join('; ')}.`, M, y + 6, { size: 9.5, color: ink3 }) + 4;
     } else {
@@ -365,6 +546,18 @@ async function makeReport(r, s) {
       if (resM.recommendation.later.length) y += txt(`Next version: ${resM.recommendation.later.map((l) => `${l.text}: ${l.why}`).join(' ')}`, M, y + 4, { size: 9.5, color: ink2 });
     }
     y += 12;
+    // Retest strip.
+    const prevF = s.retestOf ? findSession(s.retestOf) : null;
+    if (prevF) {
+      const pr = TF.buildResults(sessionAnalysis(prevF.session), prevF.session.profile || r.profile, (prevF.session.clips[0] || {}).hand, prevF.session.discomfort, 'metric');
+      const pm = pr.recommendation && pr.recommendation.current ? pr.recommendation.current.metric : 'kneeExtension';
+      const bv = (pr.gauges.find((g) => g.metric === pm) || {}).value, av = (resM.gauges.find((g) => g.metric === pm) || {}).value;
+      const pc = prevF.session.clips[0] || {};
+      const sum = TF.retestSummary({ cal: pc.calibration && Object.assign({}, pc.calibration, { bikeMeasures: prevF.session.bikeMeasures }) }, { cal: cal0 && Object.assign({}, cal0, { bikeMeasures: s.bikeMeasures }) }, pm, bv, av, 'metric');
+      need(40);
+      y += txt(`Retest of ${fmtDate(prevF.session.created)}`, M, y, { size: 9, bold: true, color: ink3 }) + 2;
+      y += txt([sum.bike, sum.metric].filter(Boolean).join(' · ') + (sum.cameraMoved ? ' (the camera had moved; small bike differences may be the camera)' : ''), M, y + 4, { size: 10, color: ink2 }) + 12;
+    }
     // Discomfort
     if (resM.discomfortNotes.length) {
       need(40);
@@ -403,7 +596,7 @@ async function makeReport(r, s) {
       const val = TF.finite(g.value) ? TF.fmtMetric(g.metric, g.value, 'metric') + (m.unit === 'mm' ? ` (${TF.fmtMetric(g.metric, gi.value, 'imperial')})` : '') : '—';
       txt(m.label, cols[0], y, { size: 9.5, bold: true, width: 145 });
       txt(val, cols[1], y, { size: 9.5, width: 75 });
-      txt(TF.fmtBand(g.metric, g.band, 'metric'), cols[2], y, { size: 9, color: ink2, width: 100 });
+      txt(TF.fmtBand(g.metric, g.band, 'metric') + (m.unit === 'mm' ? ` (${TF.fmtBand(g.metric, g.band, 'imperial')})` : ''), cols[2], y, { size: 9, color: ink2, width: 100 });
       const sc = status[statusClass(g)];
       doc.setFillColor(...sc); doc.circle(cols[3] + 3, y - 3, 3, 'F');
       txt(statusWord(g), cols[3] + 10, y, { size: 9, color: ink2, width: 90 });
@@ -411,6 +604,38 @@ async function makeReport(r, s) {
       y += 18;
     }
     y += 8;
+    // The bike's numbers, metric and imperial.
+    if (s.bikeMeasures) {
+      need(100);
+      y += txt('Your bike (from the marks)', M, y, { size: 9, bold: true, color: ink3 }) + 6;
+      for (const k of ['saddleHeight', 'saddleSetback', 'drop', 'reach', 'effectiveSeatAngle']) {
+        const v = s.bikeMeasures[k]; if (!TF.finite(v)) continue;
+        need(18);
+        const val = k === 'effectiveSeatAngle' ? `${v.toFixed(1)}°` : `${Math.round(v)} mm (${TF.fmtLength(v, 'imperial', 'length')})`;
+        txt(TF.BIKE_MEASURES[k].label, cols[0], y, { size: 9.5, bold: true, width: 145 });
+        txt(val, cols[1], y, { size: 9.5, width: 150 });
+        txt(TF.BIKE_MEASURES[k].note, cols[3], y, { size: 9, color: ink2, width: 170 });
+        y += 16;
+      }
+      y += 8;
+    }
+    // Second hand position.
+    const a2 = secondAnalysis(s);
+    if (a2 && a2.ok) {
+      const r2 = TF.buildResults(a2, prof, s.secondClip.hand, s.discomfort, 'metric');
+      need(60);
+      y += txt(`${TF.HAND_POSITIONS[s.secondClip.hand]} (second position)`, M, y, { size: 9, bold: true, color: ink3 }) + 6;
+      for (const g of r2.gauges.filter((x) => ['hipClosed', 'backAngle', 'shoulder', 'elbow', 'wrist'].includes(x.metric))) {
+        need(18);
+        txt(TF.METRICS[g.metric].label, cols[0], y, { size: 9.5, bold: true, width: 145 });
+        txt(TF.finite(g.value) ? TF.fmtMetric(g.metric, g.value, 'metric') : '—', cols[1], y, { size: 9.5, width: 75 });
+        txt(TF.fmtBand(g.metric, g.band, 'metric'), cols[2], y, { size: 9, color: ink2, width: 100 });
+        doc.setFillColor(...status[statusClass(g)]); doc.circle(cols[3] + 3, y - 3, 3, 'F');
+        txt(statusWord(g), cols[3] + 10, y, { size: 9, color: ink2, width: 90 });
+        y += 16;
+      }
+      y += 8;
+    }
     // Set-up quality
     const cal = clip.calibration;
     need(60);

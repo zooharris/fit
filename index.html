@@ -131,7 +131,9 @@ ul, ol { margin: 0; padding-left: 20px; }
 .nav a.active { color: var(--ink); }
 .nav a.active svg { color: var(--accent); }
 .nav .brand, .nav .nav-sep, .nav .nav-foot { display: none; }
-.units-toggle { display: inline-flex; }
+.units-toggle { display: inline-flex; flex: 0 0 auto; flex-wrap: nowrap; }
+.units-toggle button { white-space: nowrap; }
+@media (max-width: 420px) { .topbar .lockup .wordmark { display: none; } .filechip { max-width: 56vw; } }
 
 @media (min-width: 900px) {
   .shell { flex-direction: row; }
@@ -480,7 +482,7 @@ details.more summary svg { width: 14px; height: 14px; transition: transform .15s
 .fit .question .qrow { display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
 .fit .question .qrow .btn { min-width: 160px; }
 .fit .question .qhint { font-size: 14px; color: #C9D3E2; font-weight: 500; margin-top: 10px; }
-.fit .nudge { position: absolute; z-index: 4; left: 50%; top: 50%; transform: translate(-50%, calc(-50% - 34vh)); display: inline-flex; gap: 8px; align-items: center; padding: 8px 14px; border-radius: 999px; background: rgba(255,106,26,.92); color: #1A0B02; font-weight: 700; font-size: 14px; white-space: nowrap; }
+.fit .nudge { position: absolute; z-index: 4; left: 50%; top: 50%; transform: translateX(-50%); display: inline-flex; gap: 8px; align-items: center; padding: 8px 14px; border-radius: 999px; background: rgba(255,106,26,.92); color: #1A0B02; font-weight: 700; font-size: 14px; white-space: nowrap; }
 .fit .nudge svg { width: 18px; height: 18px; }
 .fit .fadeable, .fit .status { transition: opacity .3s; }
 .fit.faded .fadeable { opacity: 0; pointer-events: none; }
@@ -514,11 +516,60 @@ details.more summary svg { width: 14px; height: 14px; transition: transform .15s
 .intro-icon svg { width: 120px; height: 120px; max-height: none; border-radius: 26px; }
 .intro h1 { margin-top: 6px; }
 
+/* Results (Part C) */
+.reco .action.big { font-size: 28px; line-height: 33px; margin-bottom: 4px; }
+.reco .amount { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+.reco .expect { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; font-size: 14px; color: var(--ink); background: color-mix(in srgb, var(--teal) 10%, transparent); border-radius: var(--radius-s); padding: 8px 10px; }
+.reco .expect svg { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 2px; color: var(--teal); }
+.panel.warnpanel { border-color: color-mix(in srgb, var(--warn) 60%, var(--line)); }
+.position-shot { display: flex; align-items: center; justify-content: center; width: 100%; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); background: #0A1220; overflow: hidden; cursor: pointer; }
+.position-shot img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.retest { margin-top: 14px; }
+.retest .delta { margin: 6px 0 10px; font-weight: 600; }
+.retest .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+@media (max-width: 520px) { .retest .ba { grid-template-columns: 1fr; } }
+.bike-list { display: flex; flex-direction: column; padding-top: 4px; padding-bottom: 4px; }
+.bike-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.bike-row:last-child { border-bottom: 0; }
+.bike-row .bv { font-weight: 700; font-size: 17px; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; white-space: nowrap; }
+details.fold > summary { list-style: none; display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary svg { width: 16px; height: 16px; transition: transform .15s; color: var(--ink-3); }
+details.fold[open] > summary svg { transform: rotate(90deg); }
+details.fold > summary .hval { margin-left: auto; color: var(--ink-3); font-size: 14px; font-weight: 500; }
+.export-line { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--bg-2); font-size: 14px; margin-top: 14px; }
+.export-line > svg { width: 18px; height: 18px; color: var(--good); flex: 0 0 auto; }
+.export-line.warn > svg { color: var(--warn); }
+.compare-shot { display: block; width: 100%; border-radius: var(--radius-s); background: #0A1220; }
+.key { display: inline-block; width: 18px; height: 4px; border-radius: 2px; vertical-align: middle; margin: 0 6px 0 2px; }
+.key.orange { background: #FF6A1A; } .key.grey { background: rgba(200,210,225,.7); margin-left: 12px; }
+.table-wrap { overflow-x: auto; padding: 4px 8px; }
+table.cmp { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.cmp th, table.cmp td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.cmp tr:last-child th, table.cmp tr:last-child td { border-bottom: 0; }
+table.cmp th { font-weight: 600; }
+table.cmp td.ch { font-weight: 700; white-space: nowrap; }
+.dot-s { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--none); vertical-align: middle; }
+.dot-s.good { background: var(--good); } .dot-s.warn { background: var(--warn); } .dot-s.bad { background: var(--bad); }
+
+/* Settings groups and Sessions (Part D) */
+details.group > summary { list-style: none; display: flex; align-items: center; gap: 10px; cursor: pointer; min-height: 32px; }
+details.group > summary::-webkit-details-marker { display: none; }
+details.group > summary h2 { margin: 0; }
+details.group > summary .hval { margin-left: auto; color: var(--ink-3); font-size: 14px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+details.group > summary svg { width: 16px; height: 16px; color: var(--ink-3); transition: transform .15s; flex: 0 0 auto; }
+details.group[open] > summary svg { transform: rotate(90deg); }
+details.group .gbody { margin-top: 14px; }
+.groups { gap: 10px; }
+.select-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.list-item.pick { cursor: pointer; }
+.list-item.pick input { width: 22px; height: 22px; accent-color: var(--accent); flex: 0 0 auto; }
+
 </style>
 </head>
 <body>
 <noscript><div style="padding:24px;font-family:system-ui">Tango Fitter needs JavaScript turned on.</div></noscript>
-<!-- Tango Fitter 0.1.0-beta.1 · built 2026-10-25 17:19 UTC · one self-contained file -->
+<!-- Tango Fitter 0.1.0-beta.1 · built 2026-10-25 20:22 UTC · one self-contained file -->
 <script>
 /* ==========================================================================
    Tango Fitter — measurement engine
@@ -620,6 +671,7 @@ const TF_CONFIG = {
     cameraMovedPx: 15,            // axles or bottom bracket moved more than this (at 720p, scaled) → camera moved
     lightMin: 0.22,               // mean frame brightness (0–1) below this → the Light check turns amber
     levelToleranceDeg: 3,         // phone tilt or roll beyond this → the Level check turns amber
+    seatTubeAngleDeg: 73.5,       // typical; used only to tell a rail move from the side effect of raising the saddle
     silhouetteRiderScale: 0.92,   // the brand rider is drawn a little smaller about the bottom bracket so the
                                   // silhouette's head fits a 16:9 frame with the wheels at 20% and the ground at 84%
   },
@@ -1969,6 +2021,7 @@ function recommend(analysis, targets, opts) {
       why: `Your knee extension is ${fmtAngle(m.kneeExtension.value)}, ${sideWords(m.kneeExtension.value, targets.kneeExtension, ke.side)} the target range of ${fmtBand('kneeExtension', targets.kneeExtension, units)}. ${raise ? 'A low saddle leaves the knee bent at the bottom of the stroke.' : 'A high saddle over-straightens the knee and can make the hips rock.'}`,
       note: [amount && amount.capped ? `The full correction may be more than this. Change it no more than ${fmtLength(R.maxSaddleChangeMm, units, 'adjust')} at a time and retest between steps.` : '', crossCheck].filter(Boolean).join(' '),
       howTo: 'Mark the seatpost with tape at the frame before loosening it, so you can measure the change and go back if you need to.',
+      expect: `On the retest, the marks should show the saddle ${amount ? `${fmtRange(amount.lo, amount.hi, units)} ${raise ? 'higher' : 'lower'}` : (raise ? 'a little higher' : 'a little lower')}, and your knee extension should move ${raise ? 'up' : 'down'} towards ${fmtBand('kneeExtension', targets.kneeExtension, units)}.`,
     });
   }
 
@@ -1989,6 +2042,7 @@ function recommend(analysis, targets, opts) {
       why: `With the crank level, your knee is ${fmtSignedMm(m.kops.value, units)} from the pedal spindle; the target is ${fmtBand('kops', targets.kops, units)}.`,
       note: `Moving the saddle ${back ? 'back' : 'forward'} also ${back ? 'raises' : 'lowers'} it slightly in effect, so the next retest re-checks saddle height.`,
       howTo: 'The rails have a scale on most saddles; note where the clamp sits before you move it.',
+      expect: `On the retest, the marks should show the saddle setback ${amount ? `${fmtRange(amount.lo, amount.hi, units)} ${back ? 'more' : 'less'}` : (back ? 'a little more' : 'a little less')}, and your knee should sit ${back ? 'further back' : 'further forward'} over the pedal, towards ${fmtBand('kops', targets.kops, units)}.`,
     });
   }
 
@@ -2212,6 +2266,48 @@ function buildResults(analysis, profile, hand, discomfort, units, opts) {
   const highlighted = new Set(notes.flatMap((n) => n.highlight));
   gauges.sort((a, b) => (highlighted.has(b.metric) ? 1 : 0) - (highlighted.has(a.metric) ? 1 : 0));
   return { targets, recommendation: rec, gate, discomfortNotes: notes, gauges, highlighted: [...highlighted] };
+}
+
+/**
+ * retestSummary(prevSession, nowSession, metric, units) — the retest strip (brief C1.3): what the marks say changed
+ * on the bike and how the measurement the advice was about moved. Sessions carry bikeMeasures and their first
+ * clip's calibration; metric values come from the caller (analysis of each session).
+ */
+function retestSummary(prev, now, metric, prevValue, nowValue, units) {
+  const cmp = compareMarks(prev.cal, now.cal);
+  const parts = [];
+  const words = { saddleHeight: 'saddle', saddleSetback: 'setback', drop: 'drop', reach: 'reach' };
+  if (cmp && cmp.changes) {
+    const nb = now.cal && now.cal.bikeMeasures, pb = prev.cal && prev.cal.bikeMeasures;
+    const tol = TF_CONFIG.recommend.madeToleranceMm;
+    const r = (v) => Math.round(v);
+    if (nb && pb) {
+      // The saddle. Raising it up a sloping seat post also moves the nose back a little; that part is left out
+      // so "setback" appears only when the saddle was moved on its rails.
+      const dh = nb.saddleHeight - pb.saddleHeight;
+      if (finite(dh) && Math.abs(r(dh)) >= tol) parts.push(`${words.saddleHeight} ${fmtSignedMm(r(dh), units)}`);
+      const ds = nb.saddleSetback - pb.saddleSetback - (finite(dh) ? dh * Math.cos(TF_CONFIG.camera.seatTubeAngleDeg * Math.PI / 180) : 0);
+      if (finite(ds) && Math.abs(r(ds)) >= tol) parts.push(`saddle ${fmtLength(Math.abs(r(ds)), units, 'adjust')} ${ds > 0 ? 'further back' : 'further forward'} on its rails`);
+      // The bars: drop and reach also change when only the saddle moves, so take out the saddle's part and
+      // report the bars only when they moved themselves (height above the bottom bracket, distance in front of it).
+      const R = Math.PI / 180;
+      const barUp = (m) => m.saddleHeight * Math.sin(m.effectiveSeatAngle * R) - m.drop;
+      const barFwd = (m) => m.reach - m.saddleSetback;
+      if ([nb, pb].every((m) => ['saddleHeight', 'effectiveSeatAngle', 'drop', 'reach', 'saddleSetback'].every((k) => finite(m[k])))) {
+        const up = r(barUp(nb) - barUp(pb)), fwd = r(barFwd(nb) - barFwd(pb));
+        if (Math.abs(up) >= tol) parts.push(`bars ${fmtLength(Math.abs(up), units, 'adjust')} ${up > 0 ? 'higher' : 'lower'}`);
+        if (Math.abs(fwd) >= tol) parts.push(`bars ${fmtLength(Math.abs(fwd), units, 'adjust')} ${fwd > 0 ? 'further forward' : 'further back'}`);
+      }
+    } else {
+      for (const k of ['saddleHeight', 'saddleSetback']) {
+        const d = cmp.changes[k];
+        if (finite(d) && Math.abs(d) >= tol) parts.push(`${words[k]} ${fmtSignedMm(d, units)}`);
+      }
+    }
+    if (!parts.length) parts.push('no change to the bike');
+  }
+  const ms = finite(prevValue) && finite(nowValue) ? `${METRICS[metric].label.toLowerCase()} ${fmtMetric(metric, prevValue, units)} → ${fmtMetric(metric, nowValue, units)}` : '';
+  return { bike: parts.length ? `${parts.join(', ')} (measured)` : '', metric: ms, cameraMoved: !!(cmp && cmp.cameraMoved), changes: cmp ? cmp.changes : null };
 }
 
 /* ==========================================================================
@@ -2457,7 +2553,7 @@ const TF = {
   fmtLength, fmtSignedMm, fmtRange, fmtAngle, fmtMetric, fmtBand, inchFraction,
   targetsFor, classify, compactLandmarks, nearSide, facingDirection, smoothSide, toWorld, toImage,
   wheelOuterDiameter, computeCalibration, spindleInFoot, spindleFromFoot, fitFootSpindle,
-  BIKE_MARKS, BIKE_MEASURES, bikeMeasuresFrom, toBikeFrame, bikeFramingCheck, compareMarks,
+  BIKE_MARKS, BIKE_MEASURES, bikeMeasuresFrom, toBikeFrame, bikeFramingCheck, compareMarks, retestSummary,
   StrokeCounter, framingCheck, framingCuts, riderPresent, describeMissing, captureQuality, pickCalibrationTime,
   analyseClip, nearestFrameIndex, recommend, withHistory, historyEntry, saddleHeightChange, saddleSetbackChange,
   discomfortGate, discomfortNotes, buildResults,
@@ -3443,16 +3539,17 @@ route('/intro', async (main, { query }) => {
 }, { nav: 'fit' });
 
 function sessionRow(r, s, showRider) {
+  return `<a class="list-item" href="#/session/${s.id}"><span class="grow">${sessionRowInner(r, s, showRider)}</span>${icon('chevR', 'chev')}</a>`;
+}
+function sessionRowInner(r, s, showRider) {
   const res = sessionResults(r, s);
   const rec = res && res.recommendation && res.recommendation.current;
   const ke = res && res.gauges.find((g) => g.metric === 'kneeExtension');
   const clip = s.clips[0];
   const hand = clip ? TF.HAND_POSITIONS[clip.hand] : '';
-  const headline = !res ? 'No results' : rec ? rec.action : 'Saddle position in range';
-  return `<a class="list-item" href="#/session/${s.id}">
-    <span class="grow"><span class="title">${esc(fmtDateTime(s.created))}${s.sample ? ' <span class="tag teal">Sample</span>' : ''}${s.retestOf ? ' <span class="tag">Retest</span>' : ''}</span><br>
-    <span class="sub">${showRider ? `${esc(r.name)} · ` : ''}${esc(headline)}${hand ? ` · ${esc(hand)}` : ''}${ke && TF.finite(ke.value) ? ` · knee ${Math.round(ke.value)}°` : ''}</span></span>
-    ${icon('chevR', 'chev')}</a>`;
+  const headline = !res ? 'No results' : rec ? (rec.kind === 'stop' ? 'See a professional' : rec.text.replace(/, then retest\.$/, '')) : 'Saddle position in range';
+  return `<span class="title">${esc(fmtDateTime(s.created))}${s.sample ? ' <span class="tag teal">Sample</span>' : ''}${s.retestOf ? ' <span class="tag">Retest</span>' : ''}</span><br>
+    <span class="sub">${showRider ? `${esc(r.name)} · ` : ''}${esc(headline)}${hand ? ` · ${esc(hand)}` : ''}${ke && TF.finite(ke.value) ? ` · knee extension ${Math.round(ke.value)}°` : ''}</span>`;
 }
 
 /** Results for a session, recomputed from its frames (so units and wording follow current settings). */
@@ -3585,72 +3682,121 @@ route('/rider/:id', async (main, { id }) => {
   };
 }, { needsFile: true, nav: 'fit' });
 
-/* ---------- history ---------- */
+/* ---------- sessions (brief D2) ---------- */
 route('/history', async () => { go('#/sessions'); });
-route('/sessions', async (main) => {
-  const r = rider();
-  const showAll = S.meta.historyAll && S.file.riders.length > 1;
-  const items = (showAll ? allSessions() : (r ? r.sessions.map((s) => ({ rider: r, session: s })) : []))
+route('/sessions', async (main, { query }) => {
+  const riders = S.file.riders;
+  const cur = rider();
+  const which = S.meta.sessionsRider === 'all' && riders.length > 1 ? 'all' : (cur ? cur.id : null);
+  const items = (which === 'all' ? allSessions() : (cur ? cur.sessions.map((x) => ({ rider: cur, session: x })) : []))
     .sort((a, b) => (a.session.created < b.session.created ? 1 : -1));
+  const selecting = query.get('select') === '1';
+  const picked = new Set();
+  const row = (x) => selecting
+    ? `<label class="list-item pick"><input type="checkbox" data-id="${x.session.id}"><span class="grow">${sessionRowInner(x.rider, x.session, which === 'all')}</span></label>`
+    : sessionRow(x.rider, x.session, which === 'all');
   main.innerHTML = `
-    <div class="page-head"><div><h1>Sessions</h1><div class="sub">${showAll ? 'Every rider in this file' : esc(r ? r.name : '')} · ${plural(items.length, 'session')}</div></div>
-      ${S.file.riders.length > 1 ? `<div class="seg" id="hs"><button data-v="one">${esc(r ? r.name : 'This rider')}</button><button data-v="all">All riders</button></div>` : ''}</div>
-    ${items.length ? `<div class="list">${items.map((x) => sessionRow(x.rider, x.session, showAll)).join('')}</div>`
-      : `<div class="empty panel">${icon('history')}<p>No sessions yet.</p><a class="btn primary" style="margin-top:12px" href="#/session/new">${icon('camera')}Start a fit session</a></div>`}`;
-  $$('#hs button', main).forEach((b) => { b.classList.toggle('on', (b.dataset.v === 'all') === !!showAll); b.onclick = async () => { S.meta.historyAll = b.dataset.v === 'all'; await saveMeta(); render(); }; });
+    <div class="page-head"><div><h1>Sessions</h1><div class="sub">${which === 'all' ? 'Every rider in this file' : esc(cur ? cur.name : '')} · ${plural(items.length, 'session')}</div></div>
+      ${items.length > 1 || selecting ? `<div class="row">${selecting ? '<a class="btn sm quiet" href="#/sessions">Done</a>' : `<a class="btn sm" href="#/sessions?select=1" id="ss-select">${icon('check')}Compare or delete</a>`}</div>` : ''}</div>
+    ${riders.length > 1 ? `<div class="chips" id="ss-riders" style="margin-bottom:12px">${riders.map((r) => `<button class="chip ${which === r.id ? 'on' : ''}" data-r="${r.id}">${esc(r.name)}</button>`).join('')}<button class="chip ${which === 'all' ? 'on' : ''}" data-r="all">All riders</button></div>` : ''}
+    ${selecting ? `<div class="select-bar panel tight"><span class="grow small muted" id="ss-count">Pick two sessions to compare, or any to delete.</span><button class="btn sm" id="ss-compare" disabled>Compare</button><button class="btn sm danger" id="ss-delete" disabled>${icon('trash')}Delete</button></div>` : ''}
+    ${items.length ? `<div class="list">${items.map(row).join('')}</div>`
+      : `<div class="empty panel">${icon('history')}<p>No sessions yet.</p><a class="btn primary" style="margin-top:12px" href="#/session/new">${icon('camera')}Start a fit</a></div>`}`;
+  $$('#ss-riders .chip', main).forEach((b) => (b.onclick = async () => {
+    if (b.dataset.r === 'all') S.meta.sessionsRider = 'all';
+    else { S.meta.sessionsRider = 'one'; S.riderId = b.dataset.r; renderShell('sessions'); }
+    await saveMeta(); render();
+  }));
+  if (!selecting) return;
+  const paint = () => {
+    $('#ss-count', main).textContent = picked.size ? `${plural(picked.size, 'session')} picked${picked.size === 2 ? '' : picked.size < 2 ? ' · pick two to compare' : ' · compare needs exactly two'}` : 'Pick two sessions to compare, or any to delete.';
+    $('#ss-compare', main).disabled = picked.size !== 2;
+    $('#ss-delete', main).disabled = picked.size === 0;
+  };
+  $$('input[data-id]', main).forEach((c) => (c.onchange = () => { if (c.checked) picked.add(c.dataset.id); else picked.delete(c.dataset.id); paint(); }));
+  $('#ss-compare', main).onclick = () => { const [a, b] = [...picked]; go(`#/compare/${a}/${b}`); };
+  $('#ss-delete', main).onclick = async () => {
+    const list = [...picked].map(findSession).filter(Boolean);
+    const names = list.map((f) => fmtDateTime(f.session.created)).join(', ');
+    if (!(await confirmDanger(`Delete ${plural(list.length, 'session')}?`, `${esc(names)}: the sessions, with their videos, snapshots and reports, are removed from this device. Copies already exported are not affected.`, 'Delete'))) return;
+    for (const f of list) {
+      await deleteBlobs(`riders/${f.rider.id}/sessions/${f.session.id}/`);
+      f.rider.sessions = f.rider.sessions.filter((x) => x.id !== f.session.id);
+      S.cache.delete(f.session.id); S.cache.delete(`${f.session.id}:2`);
+    }
+    await saveFile();
+    toast(`${plural(list.length, 'session')} deleted.`);
+    go('#/sessions');
+  };
+  paint();
 }, { needsFile: true, nav: 'sessions' });
 
-/* ---------- settings ---------- */
+/* ---------- settings: collapsible groups (brief D1) ---------- */
 route('/settings', async (main) => {
   const v = Settings.v;
   const seg = (id, opts, cur) => `<div class="seg" id="${id}">${opts.map(([val, lab]) => `<button data-v="${val}" class="${String(val) === String(cur) ? 'on' : ''}">${esc(lab)}</button>`).join('')}</div>`;
-  let sizes = null;
+  const start = v.startMode === 'strokes' ? `${v.startStrokes} strokes` : v.startMode === 'beeps' ? `${v.startBeeps} beeps` : `${v.startSeconds} s`;
+  const stop = v.stopMode === 'strokes' ? `${v.stopStrokes} strokes` : `${v.stopSeconds} s`;
+  const open = v.settingsOpen || 'display';
+  const group = (key, title, value, body) => `<details class="panel group" data-g="${key}" ${open === key ? 'open' : ''}><summary><h2>${esc(title)}</h2><span class="hval">${esc(value)}</span>${icon('chevR')}</summary><div class="stack gbody">${body}</div></details>`;
+  const fileVal = S.file ? `${S.file.name} · ${unexported() ? 'not exported' : 'exported'}` : 'No file open';
   main.innerHTML = `
-    <div class="page-head"><div><h1>Settings</h1><div class="sub">These settings are kept on this device.</div></div></div>
-    <div class="stack">
-      <div class="panel stack"><h2>Display</h2>
+    <div class="page-head"><div><h1>Settings</h1><div class="sub">Kept on this device. Tap a group to open it.</div></div></div>
+    <div class="stack groups">
+      ${group('display', 'Display', `${v.units === 'imperial' ? 'Imperial' : 'Metric'} · ${{ system: 'Match device', dark: 'Dark', light: 'Light' }[v.theme]}`, `
         <div class="field"><span class="label">Units</span>${seg('s-units', [['metric', 'Metric (mm)'], ['imperial', 'Imperial (in)']], v.units)}</div>
-        <div class="field"><span class="label">Theme</span>${seg('s-theme', [['system', 'Match device'], ['dark', 'Dark'], ['light', 'Light']], v.theme)}</div>
-      </div>
-      <div class="panel stack"><h2>Hands-free guidance</h2>
+        <div class="field"><span class="label">Theme</span>${seg('s-theme', [['system', 'Match device'], ['dark', 'Dark'], ['light', 'Light']], v.theme)}</div>`)}
+      ${group('sound', 'Sound and guidance', `${{ both: 'Voice and beeps', voice: 'Voice only', beeps: 'Beeps only' }[v.audioMode]} · replies ${v.voiceReplies ? 'by hand or voice' : 'by hand'}`, `
         <div class="field"><span class="label">Sound</span>${seg('s-audio', [['both', 'Voice and beeps'], ['voice', 'Voice only'], ['beeps', 'Beeps only']], v.audioMode)}
-          <span class="hint">On iPhone, turn the ring/silent switch off and the volume up, or you will not hear the prompts.</span></div>
+          <span class="hint">On iPhone, turn the silent switch off and the volume up, or you will not hear the prompts.</span></div>
         <div><button class="btn sm" id="s-test">${icon('volume')}Test sound</button></div>
-        <div class="field"><span class="label">Start recording</span>${seg('s-start', [['seconds', 'After a delay'], ['beeps', 'After beeps'], ['strokes', 'After pedal strokes']], v.startMode)}
+        <label class="switch"><input type="checkbox" id="s-voice" ${v.voiceReplies ? 'checked' : ''}><span>Answer questions by voice too ("yes", "again", "no", "done")</span></label>
+        <span class="hint">Raising a hand and tapping always work. ${'SpeechRecognition' in window || 'webkitSpeechRecognition' in window ? 'This browser can listen.' : 'This browser can’t listen, so the app asks for a raised hand instead.'}</span>
+        <details class="more"><summary>${icon('chevR')}What the beeps mean</summary><dl class="kv" style="margin-top:8px">${BEEP_LEGEND.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl></details>`)}
+      ${group('recording', 'Recording', `Start after ${start} · record ${stop}`, `
+        <p class="small muted">These are the defaults; you can also change them on the riding screen, and the change is remembered.</p>
+        <div class="field"><span class="label">Start recording</span>${seg('s-start', [['strokes', 'After steady strokes'], ['seconds', 'After a delay'], ['beeps', 'After beeps']], v.startMode)}
           <div class="row wrap" style="margin-top:6px" id="s-start-n"></div></div>
         <div class="field"><span class="label">Stop recording</span>${seg('s-stop', [['seconds', 'After a time'], ['strokes', 'After pedal strokes']], v.stopMode)}
           <div class="row wrap" style="margin-top:6px" id="s-stop-n"></div></div>
-        <details class="more"><summary>${icon('chevR')}What the beeps mean</summary><dl class="kv" style="margin-top:8px">${BEEP_LEGEND.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl></details>
-      </div>
-      ${S.file ? `<div class="panel stack"><h2>Fit file</h2>
+        <div class="field"><span class="label">Camera</span>${seg('s-facing', [['environment', 'Back camera'], ['user', 'Front camera']], v.cameraFacing)}
+          <span class="hint">${v.cameraId ? 'A specific camera was chosen on the camera screen. <button class="btn sm quiet" id="s-camreset">Use the default</button>' : 'On a laptop or with several cameras, pick one with the Camera button on the camera screen.'}</span></div>
+        ${S.file ? `<label class="switch"><input type="checkbox" id="s-prompt" ${v.exportPrompt ? 'checked' : ''}><span>Ask to export after each session</span></label>` : ''}`)}
+      ${S.file ? group('file', 'Fit file', fileVal, `
         <dl class="kv"><dt>Name</dt><dd>${esc(S.file.name)} <button class="btn sm quiet" id="s-rename">Rename</button></dd>
           <dt>Contents</dt><dd>${plural(S.file.riders.length, 'rider')}, ${plural(allSessions().length, 'session')}</dd>
           <dt>Size</dt><dd id="s-size">…</dd>
           <dt>Last export</dt><dd>${S.meta.lastExportedAt ? esc(fmtDateTime(S.meta.lastExportedAt)) : 'Never'}${unexported() ? ' · <span class="status-warn">changes not exported</span>' : ''}</dd></dl>
-        <p class="small muted">The browser keeps a working copy, but it can clear its storage. The exported .tango file is the permanent copy: it holds every rider, session, video, snapshot and report.</p>
-        <div class="btn-row"><button class="btn primary" id="s-export">${icon('download')}Export (Full)</button><button class="btn" id="s-export-lite">Export Lite (no videos)</button><button class="btn" id="s-open">${icon('upload')}Open a file</button><button class="btn quiet" id="s-new">${icon('plus')}New file</button></div>
-        <label class="switch"><input type="checkbox" id="s-prompt" ${v.exportPrompt ? 'checked' : ''}><span>Offer to export after each session</span></label>
-      </div>
-      <div class="panel stack"><h2>Riders</h2>
+        <p class="small muted">The browser keeps a working copy, but it can clear its storage. The exported .tango file is the permanent copy: every rider, session, video, snapshot and report.</p>
+        <div class="btn-row"><button class="btn" id="s-export">${icon('download')}Export (Full)</button><button class="btn" id="s-export-lite">Export Lite (no videos)</button><button class="btn" id="s-open">${icon('upload')}Open a file</button><button class="btn quiet" id="s-new">${icon('plus')}New file</button></div>`) : ''}
+      ${S.file ? group('riders', 'Riders', S.file.riders.map((r) => r.name).join(', ') || 'None', `
         <div class="list">${S.file.riders.map((r) => `<a class="list-item" href="#/rider/${r.id}"><span class="avatar">${esc(initials(r.name))}</span><span class="grow"><span class="title">${esc(r.name)}</span><br><span class="sub">${esc(bikeSummary(r))}</span></span>${icon('chevR', 'chev')}</a>`).join('')}</div>
-        <div><a class="btn sm" href="#/rider/new">${icon('plus')}Add a rider</a></div>
-      </div>` : ''}
-      <div class="panel stack"><h2>About</h2>
+        <div><a class="btn sm" href="#/rider/new">${icon('plus')}Add a rider</a></div>`) : ''}
+      ${group('about', 'About', `${C.app.name} ${C.app.version}`, `
         <dl class="kv"><dt>Version</dt><dd>${esc(C.app.name)} ${esc(C.app.version)}</dd>
           <dt>This browser</dt><dd>${CAPS.canRecord ? '<span class="status-good">Can record and analyse</span>' : '<span class="status-warn">Review only</span>'}${CAPS.ios ? ' · iPhone/iPad' : ''}${CAPS.standalone ? ' · Home Screen app' : ''}</dd>
           <dt>Analysis engine</dt><dd id="s-model">Checking…</dd></dl>
         <p class="small muted">Tango Fitter is a self-fit guide, not medical advice. Stop and see a professional fitter or a clinician for pain, numbness, injury or a large difference between your left and right sides.</p>
-      </div>
+        <div><a class="btn sm quiet" href="#/intro?from=help">Show the introduction</a></div>`)}
     </div>`;
+  // One group open at a time, remembered on this device.
+  $$('details.group', main).forEach((d) => d.addEventListener('toggle', () => {
+    if (!d.open) return;
+    $$('details.group', main).forEach((o) => { if (o !== d) o.open = false; });
+    Settings.set('settingsOpen', d.dataset.g);
+  }));
   const bindSeg = (id, key, after) => $$(`#${id} button`, main).forEach((b) => (b.onclick = () => { Settings.set(key, b.dataset.v); if (after) after(); render(); }));
   bindSeg('s-units', 'units'); bindSeg('s-theme', 'theme', applyTheme); bindSeg('s-audio', 'audioMode'); bindSeg('s-start', 'startMode'); bindSeg('s-stop', 'stopMode');
+  bindSeg('s-facing', 'cameraFacing', () => Settings.set('cameraId', ''));
+  const cr = $('#s-camreset', main); if (cr) cr.onclick = () => { Settings.set('cameraId', ''); render(); };
+  $('#s-voice', main).onchange = (e) => Settings.set('voiceReplies', e.target.checked);
   const numField = (wrap, key, label, min, max) => {
     const f = el(`<label class="row small muted">${esc(label)} <input type="number" inputmode="numeric" min="${min}" max="${max}" value="${v[key]}" style="width:80px;min-height:36px;padding:6px 8px;border-radius:8px;border:1px solid var(--line-2);background:var(--bg)"></label>`);
     $('input', f).onchange = (e) => { const n = Math.max(min, Math.min(max, Math.round(Number(e.target.value) || v[key]))); e.target.value = n; Settings.set(key, n); };
     wrap.appendChild(f);
   };
   const sn = $('#s-start-n', main);
-  if (v.startMode === 'seconds') numField(sn, 'startSeconds', 'Seconds after you tap Start', 5, 60);
+  if (v.startMode === 'seconds') numField(sn, 'startSeconds', 'Seconds before recording', 5, 60);
   if (v.startMode === 'beeps') numField(sn, 'startBeeps', 'Number of beeps (one a second)', 3, 20);
   if (v.startMode === 'strokes') numField(sn, 'startStrokes', 'Steady strokes before recording', 3, 30);
   const st = $('#s-stop-n', main);
@@ -3664,7 +3810,7 @@ route('/settings', async (main) => {
     $('#s-open', main).onclick = () => openFileFlow();
     $('#s-new', main).onclick = () => newFileFlow();
     $('#s-prompt', main).onchange = (e) => Settings.set('exportPrompt', e.target.checked);
-    estimateSizes().then((sz) => { sizes = sz; const d = $('#s-size', main); if (d) d.textContent = `${mb(sz.full)} full · ${mb(sz.lite)} lite`; });
+    estimateSizes().then((sz) => { const d = $('#s-size', main); if (d) d.textContent = `${mb(sz.full)} full · ${mb(sz.lite)} lite`; });
   }
   (async () => {
     let cached = false;
@@ -3680,6 +3826,7 @@ route('/help', async (main) => {
     <div class="panel"><b>In short:</b> <span class="muted">put the bike on a trainer, stand the phone beside it so the bike sits in the outline on screen, mark eight points on the bike, then ride for about a minute while the app talks you through it. Make the one change it suggests, then retest. Fitting yourself or helping a friend, it works the same way.</span>
       <div style="margin-top:10px"><a class="btn sm" href="#/intro?from=help">Show the introduction again</a></div></div>
     <h2>Getting ready</h2>
+    <p><b>Fitting yourself:</b> set the phone up first, mark the bike with the saddle empty, then walk over and get on; the app waits and starts when it sees you pedalling steadily. <b>Helping a friend:</b> they can already be on the bike while you set up; the app notices and speaks to them. Either way the screens are the same.</p>
     <ul>
       <li><b>Trainer.</b> The bike must stay still and level. A rear-wheel or direct-drive trainer, or rollers with a front-wheel riser, all work.</li>
       <li><b>Which side.</b> Film the side without the chainring, so it doesn't hide the foot.</li>
@@ -3696,19 +3843,26 @@ route('/help', async (main) => {
     <p>When it asks a question (go again after a bad recording, record a second hand position, stop), answer by <b>raising your right hand above your head for yes</b> or your <b>left hand for no</b>, holding it for a moment; or say "yes" / "again" or "no" / "done" where the browser can listen; or tap the big buttons. It always says what it understood before acting. After a bad recording, doing nothing means it goes again, up to twice.</p>
     <details class="more"><summary>${icon('chevR')}What the beeps mean</summary><dl class="kv" style="margin-top:8px">${BEEP_LEGEND.map(([a2, b2]) => `<dt>${esc(a2)}</dt><dd>${esc(b2)}</dd>`).join('')}</dl></details>
     <h2>Reading the results</h2>
+    <p>The results page starts with <b>the one change</b> to make: how much, in both mm and inches, why, and what the retest should show. Below it is <b>your position</b> at the bottom of the pedal stroke with the angles drawn on (tap it to play the recording), then, on a retest, what changed on the bike and how the measurement moved. Playback and the set-up checks are folded away underneath; tap to open them.</p>
     <p>Each measurement is shown against a target range for your bike, riding goal and hand position: <span class="status-good">green</span> is in range, <span class="status-warn">yellow</span> is close, <span class="status-bad">red</span> is outside. Every value also carries a confidence (three bars) based on how clearly the joints were seen and how steady the value was from stroke to stroke. Low-confidence values are greyed out and never drive a recommendation.</p>
     <p>The app recommends <b>one change at a time</b>, in the order fitters use because changes interact: saddle height first, then saddle fore/aft. Amounts are a range in 5 mm steps (for example “raise the saddle 5–10 mm”), never more than 10 mm at a time. Make the change, then tap <b>Retest</b>: the bike marks show whether the change was made and how much the measurement moved. If three rounds of changes have not brought a measurement into range, the app says to see a professional fitter. Reach, drop, bar width and cleats arrive in the next version; their measurements are already shown.</p>
+    <h2>The bike's numbers</h2>
+    <p>The eight marks measure the bike itself: <b>saddle height</b> (from the centre of the cranks to the saddle nose), <b>saddle setback</b> (how far the saddle nose sits behind the pedals), <b>saddle-to-bar drop</b> (how far the hoods sit below the saddle nose) and <b>reach to the hoods</b> (how far forward they are from the saddle nose). They are measured along the bike, so a slightly tilted trainer doesn't change them. A tape measure from the centre of the bottom bracket to the saddle nose should agree within about 5 mm. On a retest they show what you actually changed, so the advice can say "one more step" or "still to do".</p>
+    <h2>Comparing sessions</h2>
+    <p>In <b>Sessions</b>, tap <b>Compare or delete</b>, pick two sessions and tap <b>Compare</b>: the measurements and the bike's numbers side by side with the change between them, and both positions drawn on top of each other (the earlier one in grey), lined up on the bottom bracket. The same screen deletes the sessions you pick, after asking.</p>
     <h2>Discomfort and safety</h2>
     <p>The questions about discomfort help the app point at the measurements most often associated with where you feel it. The app never assumes discomfort is caused by your bike fit: if the related measurements are in range it says so, and lists other common causes. If you report severe discomfort, discomfort that lasts after rides, numbness, or a recent injury, it recommends seeing a clinician or professional fitter before changing anything.</p>
     <p><b>Tango Fitter is a self-fit guide, not medical advice.</b></p>
     <h2>Fit files</h2>
-    <p>A fit file (.tango) holds riders, every session, the videos, snapshots and reports. It can hold a whole household. The app keeps a working copy on this device, but browsers can clear their storage, so export after each session (the app offers to). Open the file on any iPhone, iPad or computer; if the video format won't play on that device, the playback shows the tracked skeleton instead, with every measurement intact. <b>Lite</b> exports leave the videos out to keep the file small.</p>
+    <p>Export from the line at the bottom of each results page, or from Settings → Fit file. A fit file (.tango) holds riders, every session, the videos, snapshots and reports. It can hold a whole household. The app keeps a working copy on this device, but browsers can clear their storage, so export after each session (the app offers to). Open the file on any iPhone, iPad or computer; if the video format won't play on that device, the playback shows the tracked skeleton instead, with every measurement intact. <b>Lite</b> exports leave the videos out to keep the file small.</p>
     <h2>Troubleshooting</h2>
     <ul>
       <li><b>“Camera not allowed.”</b> Allow camera access for this site in the browser's settings (iPhone: Settings → Safari → Camera), then reload.</li>
       <li><b>No sound.</b> Volume up; iPhone silent switch off; tap Test sound in Settings.</li>
       <li><b>“I lost sight of your knee.”</b> Better light, more contrast between clothing and background, and check the whole body is in the frame.</li>
       <li><b>“Your feet are cut off.”</b> Move the phone further back or a little higher.</li>
+      <li><b>Head cut off.</b> It doesn't affect the measurements, but moving the phone a little further back keeps the whole rider in view.</li>
+      <li><b>Level light stays amber.</b> Hold the phone upright and sideways, not tipped back; the light says which way it's tilted. On a laptop it reads "check by eye".</li>
       <li><b>The hand-raise isn't noticed.</b> Raise the hand clearly above your head and hold it for a second or two; or tap the button.</li>
       <li><b>Scales disagree / wheel looks oval.</b> Turn the phone so it points straight at the side of the bike, and keep it level.</li>
       <li><b>First analysis is slow.</b> The analysis engine (about 35 MB) downloads once; after that it works offline.</li>
@@ -3914,7 +4068,10 @@ function runFit(r, d) {
       const dpr = window.devicePixelRatio || 1;
       ov.width = Math.round(w * dpr); ov.height = Math.round(h * dpr);
       if (cap.W !== vw || cap.H !== vh) { cap.W = vw; cap.H = vh; still.width = vw; still.height = vh; drawSilhouette(); }
-      $u('#fx-nudge').hidden = !(sh > sw);
+      const nudge = $u('#fx-nudge');
+      nudge.hidden = !(sh > sw);
+      // Held upright: the nudge sits in the letterbox just above the picture, clear of the lights.
+      if (!nudge.hidden) nudge.style.top = `${Math.max(0, (sh - h) / 2 - 52)}px`;
     }
     function drawSilhouette() {
       if (!cap.W) return;
@@ -4590,7 +4747,8 @@ function renderFailed(main, r, d) {
 
 /* ---- app-results.js ---- */
 /* ==========================================================================
-   Results: recommendation, discomfort notes, gauges, playback, report
+   Results (brief Part C): the change, your position, the retest, measurements,
+   your bike, what you told us, playback, set-up quality, report; and compare
    ========================================================================== */
 const STATUS_WORDS = { green: 'In range', yellowlow: 'A little low', yellowhigh: 'A little high', redlow: 'Low', redhigh: 'High', none: 'Unclear' };
 const statusWord = (g) => (g.status === 'green' ? STATUS_WORDS.green : g.status === 'none' ? (g.confidence === 'none' ? 'Not measured' : STATUS_WORDS.none) : STATUS_WORDS[g.status + g.side]);
@@ -4607,38 +4765,118 @@ function gaugeHTML(g, flagged) {
     bar = `<div class="gbar"><span class="y" style="left:${pct(ylo)};right:${(100 - parseFloat(pct(yhi))).toFixed(1)}%"></span><span class="g" style="left:${pct(band.green[0])};right:${(100 - parseFloat(pct(band.green[1]))).toFixed(1)}%"></span>${has ? `<span class="m" style="left:${pct(g.value)}"></span>` : ''}</div>`;
   }
   const sc = statusClass(g);
+  // Label, value, status word, bar; everything else on tap (brief C1.4).
   return `<button class="gauge ${flagged ? 'flagged' : ''}" data-metric="${g.metric}" aria-expanded="false">
     <div class="top"><span class="name">${esc(m.label)}</span><span class="tiny status-${sc}" style="font-weight:600">${esc(statusWord(g))}</span></div>
-    <div class="top"><span class="val ${TF.finite(g.value) ? '' : 'none'}">${TF.finite(g.value) ? esc(TF.fmtMetric(g.metric, g.value, u)) : '—'}</span><span class="tiny faint">${esc(m.where)}</span></div>
+    <div class="top"><span class="val ${TF.finite(g.value) ? '' : 'none'}">${TF.finite(g.value) ? esc(TF.fmtMetric(g.metric, g.value, u)) : '—'}</span><span class="conf ${g.confidence}" title="${esc(confLabel[g.confidence])}"><i></i><i></i><i></i></span></div>
     ${bar}
-    <div class="meta"><span>Target ${esc(TF.fmtBand(g.metric, band, u))}</span><span class="conf ${g.confidence}" title="${esc(confLabel[g.confidence])}"><i></i><i></i><i></i></span></div>
-    <div class="about" hidden>${esc(m.about)}${g.reason ? `<br><span class="faint">${esc(confLabel[g.confidence])}: ${esc(g.reason)}</span>` : `<br><span class="faint">${esc(confLabel[g.confidence])}.</span>`}${TF.finite(g.spread) && g.spread > 0 ? `<br><span class="faint">Stroke-to-stroke spread ±${esc(m.unit === 'mm' ? TF.fmtLength(g.spread / 2, u, 'adjust') : `${Math.round(g.spread / 2)}°`)}.</span>` : ''}</div>
+    <div class="about" hidden><b>Target ${esc(TF.fmtBand(g.metric, band, u))}</b> · ${esc(m.where)}<br>${esc(m.about)}<br><span class="faint">${esc(confLabel[g.confidence])}${g.reason ? `: ${esc(g.reason)}` : '.'}</span>${TF.finite(g.spread) && g.spread > 0 ? `<br><span class="faint">Stroke-to-stroke spread ±${esc(m.unit === 'mm' ? TF.fmtLength(g.spread / 2, u, 'adjust') : `${Math.round(g.spread / 2)}°`)}.</span>` : ''}</div>
   </button>`;
 }
+const gaugeGrid = (gauges, flagged) => `<div class="gauges">${gauges.slice().sort((a, b) => (flagged.has(b.metric) ? 1 : 0) - (flagged.has(a.metric) ? 1 : 0) || (b.status === 'red' ? 2 : b.status === 'yellow' ? 1 : 0) - (a.status === 'red' ? 2 : a.status === 'yellow' ? 1 : 0)).map((g) => gaugeHTML(g, flagged.has(g.metric))).join('')}</div>`;
 
-function recommendationHTML(s, res) {
+/** The amount in the other unit system, for the line under the action. */
+function otherUnits(amount) {
+  if (!amount) return '';
+  const other = Settings.v.units === 'imperial' ? 'metric' : 'imperial';
+  return TF.fmtRange(amount.lo, amount.hi, other);
+}
+
+/** 1. The change (brief C1.1). */
+function changeHTML(s, res) {
   const rec = res.recommendation, gate = res.gate, cal = s.clips[0] && s.clips[0].calibration;
   const prof = gate.gated ? `<span class="tag warn">For discussion with a professional</span>` : '';
-  const later = rec.later.length ? `<div class="hr"></div><div class="caption">Coming in the next version</div><div class="next-list">${rec.later.map((l, i) => `<div class="it"><span class="n">${i + 1}</span><div><b>${esc(l.text)}</b><div class="small muted">${esc(l.why)}</div></div></div>`).join('')}</div>` : '';
-  if (rec.current) {
-    const c = rec.current;
-    return `<div class="panel accent reco">
-      <div class="eyebrow"><span class="caption">Your next change</span><span class="tag ${c.strength === 'recommended' ? 'accent' : ''}">${c.strength === 'recommended' ? 'Recommended' : 'Fine-tune'}</span>${prof}</div>
-      <div class="action">${esc(c.text)}</div>
+  const c = rec.current;
+  if (c) {
+    const stop = c.kind === 'stop';
+    const stillToDo = c.history && c.history.status === 'notMade';
+    const amt = c.amount ? `<p class="amount">${esc(TF.fmtRange(c.amount.lo, c.amount.hi, Settings.v.units))} <span class="faint">· ${esc(otherUnits(c.amount))}</span></p>` : '';
+    return `<div class="panel ${stop ? 'warnpanel' : 'accent'} reco change" id="change">
+      <div class="eyebrow"><span class="caption">${stop ? 'Time for a professional' : stillToDo ? 'Still to do' : 'Your next change'}</span>${!stop ? `<span class="tag ${c.strength === 'recommended' ? 'accent' : ''}">${c.strength === 'recommended' ? 'Recommended' : 'Fine-tune'}</span>` : ''}${prof}</div>
+      <div class="action big">${esc(c.text)}</div>
+      ${amt}
       <p class="why">${esc(c.why)}</p>
+      ${c.expect ? `<p class="expect">${icon('refresh')}<span>${esc(c.expect)}</span></p>` : ''}
       ${c.note ? `<p class="note">${esc(c.note)}</p>` : ''}
-      <p class="small faint" style="margin-top:10px">${esc(c.howTo)}</p>
-      <div class="btn-row">${s.sample ? '' : `<a class="btn primary" href="#/session/new?retest=${s.id}">${icon('refresh')}I've made this change — retest</a>`}<button class="btn quiet" data-goto="gauges">See the measurements</button></div>
+      ${c.howTo ? `<p class="small faint" style="margin-top:8px">${esc(c.howTo)}</p>` : ''}
+      ${!stop && !s.sample ? `<div class="btn-row"><a class="btn primary" href="#/session/new?retest=${s.id}" id="rs-retest">${icon('refresh')}I've made this change — retest</a></div>` : ''}
       ${rec.queued.length ? `<div class="hr"></div><div class="caption">After that</div><div class="next-list">${rec.queued.map((q, i) => `<div class="it"><span class="n">${i + 2}</span><div>${esc(q.text)}<div class="small muted">${esc(q.why)}</div></div></div>`).join('')}</div>` : ''}
-      ${later}
-      ${!cal ? `<div class="banner warn" style="margin-top:12px">${icon('alert')}<div class="grow">This session was analysed without the calibration taps, so there is no knee-over-pedal measurement and no amounts in millimetres.</div></div>` : ''}
+      ${!cal ? `<div class="banner warn" style="margin-top:12px">${icon('alert')}<div class="grow">This session was recorded without the bike marks, so there is no knee-over-pedal measurement and no amounts in millimetres.</div></div>` : ''}
     </div>`;
   }
-  return `<div class="panel reco ok">
+  return `<div class="panel reco ok change" id="change">
     <div class="eyebrow"><span class="caption">Saddle position</span>${prof}</div>
-    <div class="action">Saddle height and fore/aft are in range</div>
-    <p class="why">Nothing to change on the saddle. ${rec.later.length ? 'The measurements below include reach and drop, which the next version will advise on.' : 'Your measurements are within the target ranges for your bike and riding style.'}</p>
-    ${later}</div>`;
+    <div class="action big">Saddle height and fore/aft are in range</div>
+    <p class="why">Nothing to change on the saddle. ${rec.later.length ? 'Reach and drop are shown below; the next version will advise on them.' : 'Your measurements are within the target ranges for your bike and riding style.'}</p>
+  </div>`;
+}
+
+/** A bike number as shown, and the change between two (rounded from the true difference, as in the advice).
+    A negative drop (bars higher than the saddle) is shown as "bars above the saddle". */
+function bikeShown(k, v, barsAbove) {
+  if (!TF.finite(v)) return { text: '—', n: NaN };
+  if (k === 'effectiveSeatAngle') return { text: `${v.toFixed(1)}°`, n: v };
+  const mm = barsAbove && k === 'drop' ? -v : v;
+  // The change is rounded from the true difference, so it matches "after raising the saddle 10 mm" in the advice.
+  return { text: U.len(Settings.v.units === 'imperial' ? mm : Math.round(mm), 'length'), n: mm };
+}
+function bikeDeltaText(k, a, b) {
+  if (!TF.finite(a) || !TF.finite(b)) return '';
+  const d = b - a;
+  if (k === 'effectiveSeatAngle') return Math.abs(d) < 0.3 ? '' : `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(1)}°`;
+  return Math.abs(d) < 2 ? '' : TF.fmtSignedMm(Math.round(d), Settings.v.units);
+}
+const angleDelta = (a, b) => { const d = Math.round(b) - Math.round(a); return d === 0 ? 'no change' : `${d > 0 ? '+' : '−'}${Math.abs(d)}°`; };
+
+/** 5. Your bike: the mark-derived numbers, each with what it means. */
+function bikeHTML(bm, prevBm) {
+  if (!bm) return '';
+  const u = Settings.v.units;
+  const meaning = { saddleHeight: 'From the centre of the cranks to the saddle nose.', saddleSetback: 'How far the saddle nose sits behind the pedals.', drop: 'How far the hoods sit below the saddle nose.', reach: 'How far forward the hoods are from the saddle nose.', effectiveSeatAngle: 'How steeply the saddle sits above the pedals.' };
+  void u;
+  const rows = Object.keys(TF.BIKE_MEASURES).map((k) => {
+    const v = bm[k]; if (!TF.finite(v)) return '';
+    const above = k === 'drop' && v < 0;
+    const now = bikeShown(k, v, above);
+    let label = TF.BIKE_MEASURES[k].label, mean = meaning[k];
+    if (above) { label = 'Bars above the saddle'; mean = 'How far the hoods sit higher than the saddle nose.'; }
+    const before = prevBm ? bikeShown(k, prevBm[k], above) : null;
+    const dt = before ? bikeDeltaText(k, before.n, now.n) : '';
+    const val = now.text;
+    const delta = dt ? `<span class="tag">${esc(dt)} since last time</span>` : '';
+    return `<div class="bike-row"><div><b>${esc(label)}</b><div class="small muted">${esc(mean)}</div></div><div class="bv">${esc(val)}${delta}</div></div>`;
+  }).join('');
+  return `<div class="section" id="bike"><div class="section-head"><h2>Your bike</h2><span class="small faint">Measured from the eight marks</span></div><div class="panel bike-list">${rows}</div></div>`;
+}
+
+/** The analysis of a session's second hand position, cached separately. */
+function secondAnalysis(s) {
+  const key = `${s.id}:2`;
+  if (S.cache.has(key)) return S.cache.get(key);
+  const c = s.secondClip;
+  if (!c || !c.frames || !c.frames.length) return null;
+  const a = TF.analyseClip(Object.assign({}, c, { calibration: c.calibration ? JSON.parse(JSON.stringify(c.calibration)) : null }));
+  S.cache.set(key, a);
+  return a;
+}
+
+/** The retest strip (brief C1.3), or '' when this is not a retest. */
+function retestStrip(r, s, res) {
+  const prev = s.retestOf ? findSession(s.retestOf) : null;
+  if (!prev) return '';
+  const pr = sessionResults(prev.rider, prev.session);
+  if (!pr) return '';
+  const pm = pr.recommendation && pr.recommendation.current ? pr.recommendation.current.metric : 'kneeExtension';
+  const before = pr.gauges.find((g) => g.metric === pm), after = res.gauges.find((g) => g.metric === pm);
+  const pc = prev.session.clips[0] || {}, nc = s.clips[0] || {};
+  const sum = TF.retestSummary({ cal: pc.calibration && Object.assign({}, pc.calibration, { bikeMeasures: prev.session.bikeMeasures || (pc.calibration || {}).bikeMeasures }) },
+    { cal: nc.calibration && Object.assign({}, nc.calibration, { bikeMeasures: s.bikeMeasures || (nc.calibration || {}).bikeMeasures }) }, pm, before && before.value, after && after.value, Settings.v.units);
+  const line = [sum.bike, sum.metric].filter(Boolean).join(' · ');
+  return `<div class="panel tight retest" id="retest"><div class="caption">Since ${esc(fmtDate(prev.session.created))}</div>
+    <p class="delta">${esc(line.charAt(0).toUpperCase() + line.slice(1))}</p>
+    ${sum.cameraMoved ? `<p class="small muted">The camera had moved, so the bike numbers were measured afresh; small differences may be the camera, not the bike.</p>` : ''}
+    ${before && after ? `<div class="ba"><div><div class="tiny faint">Before</div>${gaugeHTML(before, false)}</div><div><div class="tiny faint">After</div>${gaugeHTML(after, false)}</div></div>` : ''}
+    <a class="btn sm quiet" href="#/session/${prev.session.id}">Open the earlier session</a></div>`;
 }
 
 route('/session/:id', async (main, { id }) => {
@@ -4656,61 +4894,148 @@ route('/session/:id', async (main, { id }) => {
     return;
   }
   const flagged = new Set(res.highlighted);
-  const prev = s.retestOf ? findSession(s.retestOf) : null;
-  let retestHTML = '';
-  if (prev) {
-    const pr = sessionResults(prev.rider, prev.session);
-    const pm = pr && pr.recommendation && pr.recommendation.current ? pr.recommendation.current.metric : 'kneeExtension';
-    const before = pr && pr.gauges.find((g) => g.metric === pm), after = res.gauges.find((g) => g.metric === pm);
-    if (before && after) {
-      retestHTML = `<div class="panel tight"><div class="caption">Retest of ${esc(fmtDateTime(prev.session.created))}</div>
-        <p class="delta" style="margin-top:6px">${esc(TF.METRICS[pm].label)}: <b>${esc(TF.fmtMetric(pm, before.value, Settings.v.units))}</b> → <b>${esc(TF.fmtMetric(pm, after.value, Settings.v.units))}</b>
-        <span class="tag ${statusClass(after)}" style="margin-left:6px">${esc(statusWord(after))}</span></p>
-        ${s.change ? `<p class="small muted" style="margin-top:4px">${s.change.made === 'yes' ? `Change made: ${esc(s.change.action)}` : s.change.made === 'different' ? `Different change: ${esc(s.change.note || 'not described')}` : 'No change made since last time.'}</p>` : ''}
-        <a class="btn sm quiet" href="#/session/${prev.session.id}" style="margin-top:6px">Open the earlier session</a></div>`;
-    }
-  }
   const cal = clip.calibration;
+  const prevS = s.retestOf ? findSession(s.retestOf) : null;
+  const wide = window.matchMedia('(min-width: 900px)').matches;
+  // Second hand position, when recorded.
+  let secondHTML = '';
+  const a2 = secondAnalysis(s);
+  if (a2 && a2.ok) {
+    const res2 = TF.buildResults(a2, s.profile || r.profile, s.secondClip.hand, s.discomfort, Settings.v.units);
+    secondHTML = `<div class="section" id="second"><div class="section-head"><h2>${esc(TF.HAND_POSITIONS[s.secondClip.hand] || 'Second position')}</h2><span class="small faint">Your second hand position, recorded in the same session</span></div>
+      ${gaugeGrid(res2.gauges.filter((g) => ['hipClosed', 'backAngle', 'shoulder', 'elbow', 'wrist'].includes(g.metric)), new Set())}
+      <p class="small faint" style="margin-top:8px">Saddle advice uses your main position (${esc(TF.HAND_POSITIONS[clip.hand] || '')}); this shows how the upper body changes in the ${esc((TF.HAND_POSITIONS[s.secondClip.hand] || '').toLowerCase())}.</p></div>`;
+  }
   const u = Settings.v.units;
   main.innerHTML = `
     <div class="page-head"><div><h1>Fit results</h1><div class="sub">${esc(fmtDateTime(s.created))} · ${esc(r.name)} · ${esc(TF.HAND_POSITIONS[clip.hand] || '')} · ${Math.round(res.cadence)} rpm · ${plural(res.strokes, 'stroke')}</div></div>
       <div class="row">${s.sample ? '<span class="tag teal">Sample from a simulated rider</span>' : ''}${s.retestOf ? '<span class="tag">Retest</span>' : ''}</div></div>
     ${res.gate.gated ? `<div class="banner warn" style="margin-bottom:14px">${icon('alert')}<div class="grow"><b>Please see a professional before changing your bike.</b> You mentioned ${esc(res.gate.reasons.join(', '))}. A clinician or professional fitter should look at that first. The measurements are below; treat any suggestion as something to discuss with them.</div></div>` : ''}
-    <div class="two">
-      <div class="stack">
-        ${recommendationHTML(s, res)}
-        ${retestHTML}
-        ${res.discomfortNotes.length ? `<div class="panel stack"><h2>What you told us</h2>${res.discomfortNotes.map((n) => `<div><b>${esc(n.label)}</b> <span class="tag ${n.level === 'severe' ? 'bad' : n.level === 'moderate' ? 'warn' : ''}">${esc(LEVEL_LABELS[n.level])}</span>${n.pattern ? ` <span class="tiny faint">${esc(PATTERN_LABELS[n.pattern])}</span>` : ''}<p class="small muted" style="margin-top:4px">${esc(n.text)}</p></div>`).join('')}</div>` : ''}
-      </div>
-      <div class="stack">
-        <div id="player-wrap"></div>
-      </div>
-    </div>
-    <div class="section" id="gauges"><div class="section-head"><h2>Measurements</h2><span class="small faint">Tap a measurement for details</span></div>
-      <div class="gauges">${res.gauges.map((g) => gaugeHTML(g, flagged.has(g.metric))).join('')}</div></div>
-    <div class="section"><h2>Set-up quality</h2><div class="panel">
+    ${changeHTML(s, res)}
+    <div class="section" id="position"><div class="section-head"><h2>Your position</h2><span class="small faint">Bottom of the stroke · tap to play</span></div>
+      <button class="position-shot" id="rs-pos" aria-label="Your position at the bottom of the stroke; tap to open playback" style="aspect-ratio:${clip.width || 16}/${clip.height || 9}"><span class="spinner"></span></button></div>
+    ${retestStrip(r, s, res)}
+    <div class="section" id="gauges"><div class="section-head"><h2>Measurements</h2><span class="small faint">Tap one for the target and details</span></div>
+      ${gaugeGrid(res.gauges, flagged)}</div>
+    ${bikeHTML(s.bikeMeasures, prevS ? prevS.session.bikeMeasures : null)}
+    ${secondHTML}
+    ${res.discomfortNotes.length ? `<div class="section"><h2>What you told us</h2><div class="panel stack">${res.discomfortNotes.map((n) => `<div><b>${esc(n.label)}</b> <span class="tag ${n.level === 'severe' ? 'bad' : n.level === 'moderate' ? 'warn' : ''}">${esc(LEVEL_LABELS[n.level])}</span>${n.pattern ? ` <span class="tiny faint">${esc(PATTERN_LABELS[n.pattern])}</span>` : ''}<p class="small muted" style="margin-top:4px">${esc(n.text)}</p></div>`).join('')}</div></div>` : ''}
+    <details class="section fold" id="playback" ${wide ? 'open' : ''}><summary>${icon('chevR')}<h2>Playback</h2></summary><div id="player-wrap"></div></details>
+    <details class="section fold" id="quality"><summary>${icon('chevR')}<h2>Set-up quality</h2></summary><div class="panel">
       <dl class="kv">
-        ${cal ? `<dt>Scale</dt><dd>${(cal.pxPerMm).toFixed(3)} px/mm; crank and wheel agree within ${(cal.agreement * 100).toFixed(1)}%</dd><dt>Camera square</dt><dd>Rear wheel ${Math.round(cal.squareRatio * 100)}% as wide as tall</dd><dt>Bike level</dt><dd>${Math.abs(cal.tiltDeg).toFixed(1)}°${Math.abs(cal.tiltDeg) > 0.05 ? (cal.tiltDeg > 0 ? ' front high (corrected)' : ' front low (corrected)') : ''}</dd>`
-    : '<dt>Calibration</dt><dd class="status-warn">Skipped: no millimetre measurements</dd>'}
-        <dt>Recording</dt><dd>${clip.width}×${clip.height}, ${Math.round(clip.fps || 30)} fps, ${(clip.durationS || 0).toFixed(1)} s, analysed at ${clip.analysedFps} fps${clip.analysisSeconds ? ` in ${clip.analysisSeconds} s` : ''}</dd>
-        <dt>Tracking</dt><dd>${esc(a.side === 'left' ? 'Left' : 'Right')} side towards the camera; pedal stroke from ${a.phaseSource === 'crank' ? 'the crank (calibrated)' : 'the foot path'}</dd>
+        ${cal ? `<dt>Scale</dt><dd>${(cal.pxPerMm).toFixed(3)} pixels per mm; crank and wheel agree within ${(cal.agreement * 100).toFixed(1)}%</dd><dt>Camera square</dt><dd>Rear wheel ${Math.round(cal.squareRatio * 100)}% as wide as tall</dd><dt>Bike level</dt><dd>${Math.abs(cal.tiltDeg).toFixed(1)}°${Math.abs(cal.tiltDeg) > 0.05 ? (cal.tiltDeg > 0 ? ' front high (corrected)' : ' front low (corrected)') : ''}</dd>${cal.distance && TF.finite(cal.distance.metres) ? `<dt>Camera distance</dt><dd>about ${cal.distance.metres.toFixed(1)} m</dd>` : ''}`
+    : '<dt>Bike marks</dt><dd class="status-warn">None: no millimetre measurements</dd>'}
+        <dt>Marked with</dt><dd>${s.markedWithRider ? 'the rider on the bike' : 'the saddle empty'}</dd>
+        <dt>Recording</dt><dd>${clip.width}×${clip.height}, ${Math.round(clip.fps || 30)} frames a second, ${(clip.durationS || 0).toFixed(1)} s, analysed at ${clip.analysedFps} frames a second${clip.analysisSeconds ? ` in ${clip.analysisSeconds} s` : ''}</dd>
+        <dt>Tracking</dt><dd>${esc(a.side === 'left' ? 'Left' : 'Right')} side towards the camera; pedal stroke from ${a.phaseSource === 'crank' ? 'the crank' : 'the foot path'}</dd>
         <dt>Bike</dt><dd>${esc(U.len(s.bike.crankLength, 'length'))} cranks, ${esc(s.bike.wheel === 'custom' ? U.len(s.bike.wheelDiameterMm, 'length') + ' wheel' : (TF.WHEELS[s.bike.wheel] || {}).label || '')}</dd>
         ${clip.level ? `<dt>Phone level</dt><dd>${Math.abs(clip.level.pitch).toFixed(1)}° ${clip.level.pitch >= 0 ? 'up' : 'down'}, rotated ${Math.abs(clip.level.roll).toFixed(1)}°</dd>` : ''}
-      </dl></div></div>
+        ${s.replies && s.replies.length ? `<dt>Answers</dt><dd>${s.replies.map((x) => `${esc({ gesture: 'hand raised', voice: 'voice', tap: 'tap', auto: 'no answer' }[x.via] || x.via)}`).join(', ')}</dd>` : ''}
+      </dl>${a.notes && a.notes.length ? `<ul class="small muted" style="margin-top:8px;padding-left:18px">${a.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}</div></details>
     <div class="section btn-row">
       <button class="btn" id="rs-report">${icon('report')}Report (PDF)</button>
-      <button class="btn" id="rs-export">${icon('download')}Export fit file</button>
       <span style="flex:1"></span>
       <button class="btn danger" id="rs-del">${icon('trash')}Delete session</button>
     </div>
+    <div class="export-line ${unexported() ? 'warn' : ''}">${icon(unexported() ? 'alert' : 'check')}<span class="grow">${unexported() ? 'Not exported yet: export the fit file to keep a permanent copy.' : `Fit file exported ${S.meta.lastExportedAt ? esc(fmtDateTime(S.meta.lastExportedAt)) : ''}.`}</span><button class="btn sm" id="rs-export">${icon('download')}Export</button></div>
     <p class="small faint section">Tango Fitter is a self-fit guide, not medical advice. Measurements depend on camera placement and lighting; suggestions are starting points to confirm with a retest. Stop and see a professional for pain, numbness, injury or a large left–right difference.</p>`;
   $$('.gauge', main).forEach((g) => (g.onclick = () => { const ab = $('.about', g); ab.hidden = !ab.hidden; g.setAttribute('aria-expanded', String(!ab.hidden)); }));
-  $$('[data-goto]', main).forEach((b) => (b.onclick = () => $('#' + b.dataset.goto, main).scrollIntoView({ behavior: 'smooth' })));
   $('#rs-report', main).onclick = () => makeReport(r, s);
   $('#rs-export', main).onclick = () => exportFlow();
   $('#rs-del', main).onclick = () => deleteSession(r, s);
+  const pb = $('#playback', main);
+  $('#rs-pos', main).onclick = () => { pb.open = true; pb.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  void u;
+  // Your position: the bottom-of-stroke frame, with the video when it plays here.
+  positionShot(a, s).then((url) => { const b = $('#rs-pos', main); if (b && url) b.innerHTML = `<img src="${url}" alt="">`; else if (b) b.innerHTML = '<span class="small faint">Not available</span>'; });
   await mountPlayer($('#player-wrap', main), r, s, a);
 }, { needsFile: true, nav: 'fit' });
+
+/** The bottom-of-stroke frame with the skeleton and angles, as an image URL. */
+async function positionShot(a, s) {
+  const clip = s.clips[0];
+  const bdc = (a.strokeFrames.bdc || []).find((x) => x >= 0);
+  if (!(bdc >= 0)) return null;
+  const vid = await videoAt(clip, a.smoothed[bdc].t);
+  const c = await renderFrameCanvas(a, clip, bdc, vid ? vid.video : null, {});
+  if (vid) vid.done();
+  return c.toDataURL('image/jpeg', 0.86);
+}
+/** A clip's video seeked to t, or null when it can't play here. */
+async function videoAt(clip, t) {
+  if (!clip.file) return null;
+  const b = await getBlob(clip.file);
+  if (!b || (clip.mime && document.createElement('video').canPlayType(clip.mime.split(';')[0]) === '')) return null;
+  const v = document.createElement('video'); v.muted = true; v.playsInline = true; const url = URL.createObjectURL(b); v.src = url;
+  const ok = await new Promise((res) => { v.onloadeddata = () => res(true); v.onerror = () => res(false); setTimeout(() => res(false), 5000); });
+  if (!ok) { URL.revokeObjectURL(url); return null; }
+  await new Promise((res) => { v.onseeked = res; v.currentTime = t; setTimeout(res, 2000); });
+  return { video: v, done: () => URL.revokeObjectURL(url) };
+}
+
+/* ---------- compare two sessions (brief C2) ---------- */
+route('/compare/:a/:b', async (main, { a: ida, b: idb }) => {
+  const fa = findSession(ida), fb = findSession(idb);
+  if (!fa || !fb) { go('#/sessions'); return; }
+  // Older on the left, newer on the right.
+  const [older, newer] = fa.session.created <= fb.session.created ? [fa, fb] : [fb, fa];
+  const ra = sessionResults(older.rider, older.session), rb = sessionResults(newer.rider, newer.session);
+  const aa = sessionAnalysis(older.session), ab = sessionAnalysis(newer.session);
+  if (!ra || !rb) { toast('One of these sessions has no usable measurements.'); go('#/sessions'); return; }
+  const u = Settings.v.units;
+  const rows = TF.METRIC_ORDER.map((k) => {
+    const ga = ra.gauges.find((g) => g.metric === k), gb = rb.gauges.find((g) => g.metric === k);
+    const d = TF.finite(ga.value) && TF.finite(gb.value) ? gb.value - ga.value : NaN;
+    const ch = !TF.finite(d) ? '—' : TF.METRICS[k].unit === 'mm' ? (Math.round(gb.value) === Math.round(ga.value) ? 'no change' : TF.fmtSignedMm(Math.round(gb.value) - Math.round(ga.value), u)) : angleDelta(ga.value, gb.value);
+    const cell = (g) => `<td><span class="dot-s ${statusClass(g)}"></span>${TF.finite(g.value) ? esc(TF.fmtMetric(k, g.value, u)) : '—'}</td>`;
+    return `<tr><th>${esc(TF.METRICS[k].label)}<div class="tiny faint">Target ${esc(TF.fmtBand(k, gb.band, u))}</div></th>${cell(ga)}${cell(gb)}<td class="ch">${esc(ch)}</td></tr>`;
+  }).join('');
+  const bmA = older.session.bikeMeasures, bmB = newer.session.bikeMeasures;
+  const bikeRows = bmA && bmB ? ['saddleHeight', 'saddleSetback', 'drop', 'reach'].map((k) => {
+    const above = k === 'drop' && bmA[k] < 0 && bmB[k] < 0;
+    const a1 = bikeShown(k, bmA[k], above), b1 = bikeShown(k, bmB[k], above);
+    return `<tr><th>${esc(above ? 'Bars above the saddle' : TF.BIKE_MEASURES[k].label)}</th><td>${esc(a1.text)}</td><td>${esc(b1.text)}</td><td class="ch">${esc(bikeDeltaText(k, a1.n, b1.n) || 'no change')}</td></tr>`;
+  }).join('') : '';
+  // Same day: show the times so the two columns can be told apart.
+  const sameDay = older.session.created.slice(0, 10) === newer.session.created.slice(0, 10);
+  const when = (x) => (sameDay ? fmtDateTime(x.session.created) : fmtDate(x.session.created));
+  const head = `<tr><th></th><th>${esc(when(older))}<div class="tiny faint">${esc(TF.HAND_POSITIONS[(older.session.clips[0] || {}).hand] || '')}</div></th><th>${esc(when(newer))}<div class="tiny faint">${esc(TF.HAND_POSITIONS[(newer.session.clips[0] || {}).hand] || '')}</div></th><th>Change</th></tr>`;
+  main.innerHTML = `
+    <div class="page-head"><div><h1>Compare</h1><div class="sub">${esc(older.rider.name)}${older.rider !== newer.rider ? ` and ${esc(newer.rider.name)}` : ''} · ${esc(fmtDate(older.session.created))} and ${esc(fmtDate(newer.session.created))}</div></div></div>
+    <div class="panel tight"><canvas class="compare-shot" id="cmp-shot" style="aspect-ratio:${(newer.session.clips[0] || {}).width || 16}/${(newer.session.clips[0] || {}).height || 9}"></canvas>
+      <p class="small muted" style="margin-top:8px"><span class="key orange"></span>${esc(when(newer))} <span class="key grey"></span>${esc(when(older))} (earlier) · both at the bottom of the stroke, lined up on the bottom bracket</p></div>
+    <div class="section"><h2>Measurements</h2><div class="panel table-wrap"><table class="cmp">${head}${rows}</table></div></div>
+    ${bikeRows ? `<div class="section"><h2>The bike</h2><div class="panel table-wrap"><table class="cmp">${head}${bikeRows}</table></div></div>` : ''}
+    <div class="section btn-row"><a class="btn" href="#/session/${older.session.id}">Open the earlier session</a><a class="btn" href="#/session/${newer.session.id}">Open the later session</a><a class="btn quiet" href="#/sessions">Back to sessions</a></div>`;
+  drawCompare($('#cmp-shot', main), aa, older.session, ab, newer.session);
+}, { needsFile: true, nav: 'sessions' });
+
+/** The two bottom-of-stroke skeletons overlaid: the older as a grey ghost on the newer, aligned on the bottom bracket and scaled to the same mm. */
+function drawCompare(canvas, aOld, sOld, aNew, sNew) {
+  const cOld = sOld.clips[0], cNew = sNew.clips[0];
+  const b = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round((b.width || 600) * dpr); canvas.height = Math.round(canvas.width * cNew.height / cNew.width);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#0A1220'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const k = canvas.width / cNew.width;
+  const iNew = (aNew.strokeFrames.bdc || []).find((x) => x >= 0), iOld = (aOld.strokeFrames.bdc || []).find((x) => x >= 0);
+  if (!(iNew >= 0)) return;
+  drawOverlay(ctx, aNew, cNew, iNew, { scale: k, angles: false, keypoint: true, skeleton: false });
+  if (!(iOld >= 0)) { drawOverlay(ctx, aNew, cNew, iNew, { scale: k, angles: false, bike: false }); return; }
+  // Map the older frame into the newer one: same bottom bracket, same pixels per mm, same facing.
+  const calO = cOld.calibration, calN = cNew.calibration;
+  const bbO = calO ? (calO.bbRefined || calO.taps.bb) : null, bbN = calN ? (calN.bbRefined || calN.taps.bb) : null;
+  const sc = calO && calN ? calN.pxPerMm / calO.pxPerMm : 1;
+  const flip = aOld.facing !== aNew.facing ? -1 : 1;
+  const map = (p) => (bbO && bbN ? { x: (bbN.x + flip * (p.x - bbO.x) * sc) * k, y: (bbN.y + (p.y - bbO.y) * sc) * k } : { x: p.x * k, y: p.y * k });
+  const j = aOld.smoothed[iOld] && aOld.smoothed[iOld].j; if (!j) return;
+  ctx.strokeStyle = 'rgba(176,190,210,.8)'; ctx.lineWidth = Math.max(4, canvas.width / 160); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const [x, y] of [['shoulder', 'elbow'], ['elbow', 'wrist'], ['shoulder', 'hip'], ['hip', 'knee'], ['knee', 'ankle'], ['ankle', 'heel'], ['heel', 'toe'], ['ankle', 'toe']]) {
+    if (!j[x] || !j[y]) continue; const p = map(j[x]), q = map(j[y]); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+  }
+  // Redraw the newer on top so it stays clear.
+  drawOverlay(ctx, aNew, cNew, iNew, { scale: k, angles: false, bike: false });
+}
 
 async function deleteSession(r, s) {
   if (!(await confirmDanger('Delete this session?', `The session from ${esc(fmtDateTime(s.created))}, with its video, snapshots and reports, is removed from this device. Copies already exported are not affected.`, 'Delete session'))) return;
@@ -4912,7 +5237,7 @@ async function makeReport(r, s) {
   toast('Preparing the report…', 2000);
   try {
     const jsPDF = await getJsPDF();
-    const a = sessionAnalysis(s), clip = s.clips[0];
+    const a = sessionAnalysis(s), clip = s.clips[0], cal0 = clip.calibration;
     const prof = s.profile || r.profile;
     const resM = TF.buildResults(a, prof, clip.hand, s.discomfort, 'metric');
     const resI = TF.buildResults(a, prof, clip.hand, s.discomfort, 'imperial');
@@ -4949,6 +5274,19 @@ async function makeReport(r, s) {
       if (rcI && rcI.text !== rc.text) y += txt(`Imperial: ${rcI.text}`, M, y + 2, { size: 9.5, color: ink2 });
       y += txt(rc.why, M, y + 6, { size: 10, color: ink2 }) + 4;
       if (rc.note) y += txt(rc.note, M, y + 4, { size: 9.5, color: ink2 }) + 2;
+      // What to do next (brief C3).
+      if (rc.kind !== 'stop') {
+        const steps = [rc.howTo, `Make the change${rc.amount ? ` (${TF.fmtRange(rc.amount.lo, rc.amount.hi, 'metric')}, ${TF.fmtRange(rc.amount.lo, rc.amount.hi, 'imperial')})` : ''}.`, 'Ride for a few minutes to settle in, then start a retest with the camera in the same place.', rc.expect].filter(Boolean);
+        const boxW = PW - 2 * M - 20;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+        const h = 26 + steps.reduce((t, x) => t + doc.splitTextToSize(`• ${x}`, boxW).length * 9.5 * 1.25 + 3, 0);
+        need(h + 14); y += 8;
+        doc.setFillColor(255, 240, 230); doc.roundedRect(M, y - 4, PW - 2 * M, h, 6, 6, 'F');
+        txt('What to do next', M + 10, y + 12, { size: 9.5, bold: true, color: orange, width: boxW });
+        let yy = y + 28;
+        for (const x of steps) yy += txt(`• ${x}`, M + 10, yy, { size: 9.5, color: ink2, width: boxW }) + 3;
+        y += h + 4;
+      }
       const nexts = [...resM.recommendation.queued.map((q) => q.text), ...resM.recommendation.later.map((l) => `${l.text} (next version)`)];
       if (nexts.length) y += txt(`After that: ${nexts.join('; ')}.`, M, y + 6, { size: 9.5, color: ink3 }) + 4;
     } else {
@@ -4956,6 +5294,18 @@ async function makeReport(r, s) {
       if (resM.recommendation.later.length) y += txt(`Next version: ${resM.recommendation.later.map((l) => `${l.text}: ${l.why}`).join(' ')}`, M, y + 4, { size: 9.5, color: ink2 });
     }
     y += 12;
+    // Retest strip.
+    const prevF = s.retestOf ? findSession(s.retestOf) : null;
+    if (prevF) {
+      const pr = TF.buildResults(sessionAnalysis(prevF.session), prevF.session.profile || r.profile, (prevF.session.clips[0] || {}).hand, prevF.session.discomfort, 'metric');
+      const pm = pr.recommendation && pr.recommendation.current ? pr.recommendation.current.metric : 'kneeExtension';
+      const bv = (pr.gauges.find((g) => g.metric === pm) || {}).value, av = (resM.gauges.find((g) => g.metric === pm) || {}).value;
+      const pc = prevF.session.clips[0] || {};
+      const sum = TF.retestSummary({ cal: pc.calibration && Object.assign({}, pc.calibration, { bikeMeasures: prevF.session.bikeMeasures }) }, { cal: cal0 && Object.assign({}, cal0, { bikeMeasures: s.bikeMeasures }) }, pm, bv, av, 'metric');
+      need(40);
+      y += txt(`Retest of ${fmtDate(prevF.session.created)}`, M, y, { size: 9, bold: true, color: ink3 }) + 2;
+      y += txt([sum.bike, sum.metric].filter(Boolean).join(' · ') + (sum.cameraMoved ? ' (the camera had moved; small bike differences may be the camera)' : ''), M, y + 4, { size: 10, color: ink2 }) + 12;
+    }
     // Discomfort
     if (resM.discomfortNotes.length) {
       need(40);
@@ -4994,7 +5344,7 @@ async function makeReport(r, s) {
       const val = TF.finite(g.value) ? TF.fmtMetric(g.metric, g.value, 'metric') + (m.unit === 'mm' ? ` (${TF.fmtMetric(g.metric, gi.value, 'imperial')})` : '') : '—';
       txt(m.label, cols[0], y, { size: 9.5, bold: true, width: 145 });
       txt(val, cols[1], y, { size: 9.5, width: 75 });
-      txt(TF.fmtBand(g.metric, g.band, 'metric'), cols[2], y, { size: 9, color: ink2, width: 100 });
+      txt(TF.fmtBand(g.metric, g.band, 'metric') + (m.unit === 'mm' ? ` (${TF.fmtBand(g.metric, g.band, 'imperial')})` : ''), cols[2], y, { size: 9, color: ink2, width: 100 });
       const sc = status[statusClass(g)];
       doc.setFillColor(...sc); doc.circle(cols[3] + 3, y - 3, 3, 'F');
       txt(statusWord(g), cols[3] + 10, y, { size: 9, color: ink2, width: 90 });
@@ -5002,6 +5352,38 @@ async function makeReport(r, s) {
       y += 18;
     }
     y += 8;
+    // The bike's numbers, metric and imperial.
+    if (s.bikeMeasures) {
+      need(100);
+      y += txt('Your bike (from the marks)', M, y, { size: 9, bold: true, color: ink3 }) + 6;
+      for (const k of ['saddleHeight', 'saddleSetback', 'drop', 'reach', 'effectiveSeatAngle']) {
+        const v = s.bikeMeasures[k]; if (!TF.finite(v)) continue;
+        need(18);
+        const val = k === 'effectiveSeatAngle' ? `${v.toFixed(1)}°` : `${Math.round(v)} mm (${TF.fmtLength(v, 'imperial', 'length')})`;
+        txt(TF.BIKE_MEASURES[k].label, cols[0], y, { size: 9.5, bold: true, width: 145 });
+        txt(val, cols[1], y, { size: 9.5, width: 150 });
+        txt(TF.BIKE_MEASURES[k].note, cols[3], y, { size: 9, color: ink2, width: 170 });
+        y += 16;
+      }
+      y += 8;
+    }
+    // Second hand position.
+    const a2 = secondAnalysis(s);
+    if (a2 && a2.ok) {
+      const r2 = TF.buildResults(a2, prof, s.secondClip.hand, s.discomfort, 'metric');
+      need(60);
+      y += txt(`${TF.HAND_POSITIONS[s.secondClip.hand]} (second position)`, M, y, { size: 9, bold: true, color: ink3 }) + 6;
+      for (const g of r2.gauges.filter((x) => ['hipClosed', 'backAngle', 'shoulder', 'elbow', 'wrist'].includes(x.metric))) {
+        need(18);
+        txt(TF.METRICS[g.metric].label, cols[0], y, { size: 9.5, bold: true, width: 145 });
+        txt(TF.finite(g.value) ? TF.fmtMetric(g.metric, g.value, 'metric') : '—', cols[1], y, { size: 9.5, width: 75 });
+        txt(TF.fmtBand(g.metric, g.band, 'metric'), cols[2], y, { size: 9, color: ink2, width: 100 });
+        doc.setFillColor(...status[statusClass(g)]); doc.circle(cols[3] + 3, y - 3, 3, 'F');
+        txt(statusWord(g), cols[3] + 10, y, { size: 9, color: ink2, width: 90 });
+        y += 16;
+      }
+      y += 8;
+    }
     // Set-up quality
     const cal = clip.calibration;
     need(60);

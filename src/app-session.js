@@ -194,7 +194,10 @@ function runFit(r, d) {
       const dpr = window.devicePixelRatio || 1;
       ov.width = Math.round(w * dpr); ov.height = Math.round(h * dpr);
       if (cap.W !== vw || cap.H !== vh) { cap.W = vw; cap.H = vh; still.width = vw; still.height = vh; drawSilhouette(); }
-      $u('#fx-nudge').hidden = !(sh > sw);
+      const nudge = $u('#fx-nudge');
+      nudge.hidden = !(sh > sw);
+      // Held upright: the nudge sits in the letterbox just above the picture, clear of the lights.
+      if (!nudge.hidden) nudge.style.top = `${Math.max(0, (sh - h) / 2 - 52)}px`;
     }
     function drawSilhouette() {
       if (!cap.W) return;

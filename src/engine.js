@@ -98,6 +98,7 @@ const TF_CONFIG = {
     cameraMovedPx: 15,            // axles or bottom bracket moved more than this (at 720p, scaled) → camera moved
     lightMin: 0.22,               // mean frame brightness (0–1) below this → the Light check turns amber
     levelToleranceDeg: 3,         // phone tilt or roll beyond this → the Level check turns amber
+    seatTubeAngleDeg: 73.5,       // typical; used only to tell a rail move from the side effect of raising the saddle
     silhouetteRiderScale: 0.92,   // the brand rider is drawn a little smaller about the bottom bracket so the
                                   // silhouette's head fits a 16:9 frame with the wheels at 20% and the ground at 84%
   },
@@ -1447,6 +1448,7 @@ function recommend(analysis, targets, opts) {
       why: `Your knee extension is ${fmtAngle(m.kneeExtension.value)}, ${sideWords(m.kneeExtension.value, targets.kneeExtension, ke.side)} the target range of ${fmtBand('kneeExtension', targets.kneeExtension, units)}. ${raise ? 'A low saddle leaves the knee bent at the bottom of the stroke.' : 'A high saddle over-straightens the knee and can make the hips rock.'}`,
       note: [amount && amount.capped ? `The full correction may be more than this. Change it no more than ${fmtLength(R.maxSaddleChangeMm, units, 'adjust')} at a time and retest between steps.` : '', crossCheck].filter(Boolean).join(' '),
       howTo: 'Mark the seatpost with tape at the frame before loosening it, so you can measure the change and go back if you need to.',
+      expect: `On the retest, the marks should show the saddle ${amount ? `${fmtRange(amount.lo, amount.hi, units)} ${raise ? 'higher' : 'lower'}` : (raise ? 'a little higher' : 'a little lower')}, and your knee extension should move ${raise ? 'up' : 'down'} towards ${fmtBand('kneeExtension', targets.kneeExtension, units)}.`,
     });
   }
 
@@ -1467,6 +1469,7 @@ function recommend(analysis, targets, opts) {
       why: `With the crank level, your knee is ${fmtSignedMm(m.kops.value, units)} from the pedal spindle; the target is ${fmtBand('kops', targets.kops, units)}.`,
       note: `Moving the saddle ${back ? 'back' : 'forward'} also ${back ? 'raises' : 'lowers'} it slightly in effect, so the next retest re-checks saddle height.`,
       howTo: 'The rails have a scale on most saddles; note where the clamp sits before you move it.',
+      expect: `On the retest, the marks should show the saddle setback ${amount ? `${fmtRange(amount.lo, amount.hi, units)} ${back ? 'more' : 'less'}` : (back ? 'a little more' : 'a little less')}, and your knee should sit ${back ? 'further back' : 'further forward'} over the pedal, towards ${fmtBand('kops', targets.kops, units)}.`,
     });
   }
 
@@ -1690,6 +1693,48 @@ function buildResults(analysis, profile, hand, discomfort, units, opts) {
   const highlighted = new Set(notes.flatMap((n) => n.highlight));
   gauges.sort((a, b) => (highlighted.has(b.metric) ? 1 : 0) - (highlighted.has(a.metric) ? 1 : 0));
   return { targets, recommendation: rec, gate, discomfortNotes: notes, gauges, highlighted: [...highlighted] };
+}
+
+/**
+ * retestSummary(prevSession, nowSession, metric, units) — the retest strip (brief C1.3): what the marks say changed
+ * on the bike and how the measurement the advice was about moved. Sessions carry bikeMeasures and their first
+ * clip's calibration; metric values come from the caller (analysis of each session).
+ */
+function retestSummary(prev, now, metric, prevValue, nowValue, units) {
+  const cmp = compareMarks(prev.cal, now.cal);
+  const parts = [];
+  const words = { saddleHeight: 'saddle', saddleSetback: 'setback', drop: 'drop', reach: 'reach' };
+  if (cmp && cmp.changes) {
+    const nb = now.cal && now.cal.bikeMeasures, pb = prev.cal && prev.cal.bikeMeasures;
+    const tol = TF_CONFIG.recommend.madeToleranceMm;
+    const r = (v) => Math.round(v);
+    if (nb && pb) {
+      // The saddle. Raising it up a sloping seat post also moves the nose back a little; that part is left out
+      // so "setback" appears only when the saddle was moved on its rails.
+      const dh = nb.saddleHeight - pb.saddleHeight;
+      if (finite(dh) && Math.abs(r(dh)) >= tol) parts.push(`${words.saddleHeight} ${fmtSignedMm(r(dh), units)}`);
+      const ds = nb.saddleSetback - pb.saddleSetback - (finite(dh) ? dh * Math.cos(TF_CONFIG.camera.seatTubeAngleDeg * Math.PI / 180) : 0);
+      if (finite(ds) && Math.abs(r(ds)) >= tol) parts.push(`saddle ${fmtLength(Math.abs(r(ds)), units, 'adjust')} ${ds > 0 ? 'further back' : 'further forward'} on its rails`);
+      // The bars: drop and reach also change when only the saddle moves, so take out the saddle's part and
+      // report the bars only when they moved themselves (height above the bottom bracket, distance in front of it).
+      const R = Math.PI / 180;
+      const barUp = (m) => m.saddleHeight * Math.sin(m.effectiveSeatAngle * R) - m.drop;
+      const barFwd = (m) => m.reach - m.saddleSetback;
+      if ([nb, pb].every((m) => ['saddleHeight', 'effectiveSeatAngle', 'drop', 'reach', 'saddleSetback'].every((k) => finite(m[k])))) {
+        const up = r(barUp(nb) - barUp(pb)), fwd = r(barFwd(nb) - barFwd(pb));
+        if (Math.abs(up) >= tol) parts.push(`bars ${fmtLength(Math.abs(up), units, 'adjust')} ${up > 0 ? 'higher' : 'lower'}`);
+        if (Math.abs(fwd) >= tol) parts.push(`bars ${fmtLength(Math.abs(fwd), units, 'adjust')} ${fwd > 0 ? 'further forward' : 'further back'}`);
+      }
+    } else {
+      for (const k of ['saddleHeight', 'saddleSetback']) {
+        const d = cmp.changes[k];
+        if (finite(d) && Math.abs(d) >= tol) parts.push(`${words[k]} ${fmtSignedMm(d, units)}`);
+      }
+    }
+    if (!parts.length) parts.push('no change to the bike');
+  }
+  const ms = finite(prevValue) && finite(nowValue) ? `${METRICS[metric].label.toLowerCase()} ${fmtMetric(metric, prevValue, units)} → ${fmtMetric(metric, nowValue, units)}` : '';
+  return { bike: parts.length ? `${parts.join(', ')} (measured)` : '', metric: ms, cameraMoved: !!(cmp && cmp.cameraMoved), changes: cmp ? cmp.changes : null };
 }
 
 /* ==========================================================================
@@ -1935,7 +1980,7 @@ const TF = {
   fmtLength, fmtSignedMm, fmtRange, fmtAngle, fmtMetric, fmtBand, inchFraction,
   targetsFor, classify, compactLandmarks, nearSide, facingDirection, smoothSide, toWorld, toImage,
   wheelOuterDiameter, computeCalibration, spindleInFoot, spindleFromFoot, fitFootSpindle,
-  BIKE_MARKS, BIKE_MEASURES, bikeMeasuresFrom, toBikeFrame, bikeFramingCheck, compareMarks,
+  BIKE_MARKS, BIKE_MEASURES, bikeMeasuresFrom, toBikeFrame, bikeFramingCheck, compareMarks, retestSummary,
   StrokeCounter, framingCheck, framingCuts, riderPresent, describeMissing, captureQuality, pickCalibrationTime,
   analyseClip, nearestFrameIndex, recommend, withHistory, historyEntry, saddleHeightChange, saddleSetbackChange,
   discomfortGate, discomfortNotes, buildResults,

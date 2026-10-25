@@ -84,7 +84,7 @@ def main():
 
         def new_page(ctx):
             pg = ctx.new_page()
-            pg.on('console', lambda m: errors.append(f'console.{m.type}: {m.text}') if m.type == 'error' else None)
+            pg.on('console', lambda m: errors.append(f'console.{m.type}: {m.text} @ {m.location.get("url", "")} page {pg.url}') if m.type == 'error' else None)
             pg.on('pageerror', lambda e: errors.append(f'pageerror: {e}'))
             return pg
 
@@ -200,12 +200,29 @@ def main():
         results['a_retest_reco'] = page.inner_text('.reco')
         results['a_retest_measured'] = page.evaluate("(() => { const ss = window.__TANGO.S.file.riders[0].sessions; return Math.round((ss[1].bikeMeasures.saddleHeight - ss[0].bikeMeasures.saddleHeight) * 10) / 10; })()")
         results['a_retest_replies'] = page.evaluate("window.__TANGO.S.file.riders[0].sessions[1].replies")
+        # Part C: the results page, top to bottom.
+        page.wait_for_selector('#rs-pos img', timeout=15000)
+        results['c_order'] = page.evaluate("[...document.querySelectorAll('#change, #position, #retest, #gauges, #bike, #second, #playback, #quality')].map((e) => e.id)")
+        results['c_expect'] = page.inner_text('.reco .expect')
+        results['c_amount'] = page.inner_text('.reco .amount') if page.locator('.reco .amount').count() else ''
+        results['c_retest'] = page.inner_text('#retest .delta')
+        results['c_bike'] = page.inner_text('#bike .bike-list')
+        results['c_second_on_retest'] = page.locator('#second').count()  # the retest said no to a second position
+        results['c_export_line'] = page.inner_text('.export-line')
+        page.click('#rs-pos'); time.sleep(0.4)
+        results['c_playback_open'] = page.evaluate("document.querySelector('#playback').open")
 
         # Report and export, then reopen in a fresh profile.
         with page.expect_download(timeout=30000) as dl:
             page.click('#rs-report')
         results['report'] = dl.value.suggested_filename
         page.goto(base + '#/settings')
+        page.wait_for_selector('details.group')
+        page.screenshot(path=os.path.join(SHOTS, 'd01-settings.png'), full_page=True)
+        results['d_groups_open_at_start'] = page.evaluate("[...document.querySelectorAll('details.group')].filter((d) => d.open).map((d) => d.dataset.g)")
+        results['d_group_values'] = page.evaluate("[...document.querySelectorAll('details.group > summary')].map((x) => x.innerText.replace(/\\n/g, ' : '))")
+        page.click('details.group[data-g="file"] > summary'); time.sleep(0.3)
+        results['d_groups_open_after'] = page.evaluate("[...document.querySelectorAll('details.group')].filter((d) => d.open).map((d) => d.dataset.g)")
         page.wait_for_selector('#s-export')
         with page.expect_download(timeout=60000) as dl:
             page.click('#s-export')
@@ -215,6 +232,21 @@ def main():
         page.goto(base + '#/sessions')
         page.wait_for_selector('h1:has-text("Sessions")')
         page.screenshot(path=os.path.join(SHOTS, 'a14-sessions.png'), full_page=True)
+        # Part C2: compare the two sessions.
+        page.click('#ss-select'); page.wait_for_selector('.select-bar')
+        boxes = page.locator('input[data-id]')
+        boxes.nth(0).check(); boxes.nth(1).check()
+        page.click('#ss-compare')
+        page.wait_for_selector('h1:has-text("Compare")')
+        time.sleep(0.6)
+        page.screenshot(path=os.path.join(SHOTS, 'c01-compare.png'), full_page=True)
+        results['c_compare_knee'] = page.inner_text('table.cmp tr:has-text("Knee extension")')
+        results['c_compare_bike'] = page.inner_text('table.cmp tr:has-text("Saddle height")')
+        results['c_compare_drawn'] = page.evaluate("(() => { const c = document.querySelector('#cmp-shot'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let grey = 0, orange = 0; for (let i = 0; i < d.length; i += 4) { if (d[i] > 240 && d[i+1] > 90 && d[i+1] < 120 && d[i+2] < 40) orange++; if (d[i] > 120 && d[i] < 175 && d[i+2] > d[i] + 10 && Math.abs(d[i] - d[i+1]) < 25) grey++; } return { orange: orange > 500, grey: grey > 200 }; })()")
+        page.click('.section.btn-row a.btn >> nth=0')  # open the earlier session
+        page.wait_for_selector('#second', timeout=20000)
+        results['c_second'] = page.inner_text('#second .section-head h2')
+        page.screenshot(path=os.path.join(SHOTS, 'c02-first-session-results.png'), full_page=True)
         ctx.close()
 
         ctx2 = b.new_context(viewport={'width': 1280, 'height': 860})
@@ -229,6 +261,16 @@ def main():
         fc.value.set_files(tango_path)
         p2.wait_for_selector('text=Recent sessions', timeout=20000)
         results['reopened'] = p2.evaluate("(() => { const s = window.__TANGO.S.file.riders[0].sessions; return { n: s.length, bike: !!s[0].bikeMeasures, second: !!s[0].secondClip, schema: window.__TANGO.S.file.schema }; })()")
+        # Part D2: delete one session from the list, behind "are you sure?".
+        p2.goto(base + '#/sessions?select=1')
+        p2.wait_for_selector('.select-bar')
+        p2.locator('input[data-id]').nth(0).check()
+        p2.click('#ss-delete')
+        p2.wait_for_selector('.sheet')
+        results['d_delete_asks'] = p2.inner_text('.sheet h2') if p2.locator('.sheet h2').count() else p2.inner_text('.sheet')
+        p2.click('.sheet .btn.danger')
+        p2.wait_for_function("window.__TANGO.S.file.riders[0].sessions.length === 1", timeout=10000)
+        results['d_after_delete'] = p2.evaluate("window.__TANGO.S.file.riders[0].sessions.length")
         ctx2.close()
 
         # ---------------- run (b): phone landscape, rider already on ----------------
@@ -268,9 +310,19 @@ def main():
         results['b_session'] = m.evaluate("(() => { const s = window.__TANGO.S.file.riders[0].sessions[0]; return { withRider: s.markedWithRider, spindleFoot: !!s.clips[0].calibration.spindleFoot, fit: s.clips[0].calibration.spindleFit && s.clips[0].calibration.spindleFit.source }; })()")
         m.screenshot(path=os.path.join(SHOTS, 'b05-phone-results.png'), full_page=True)
         m.set_viewport_size({'width': 390, 'height': 844})
+        time.sleep(0.6)
+        m.screenshot(path=os.path.join(SHOTS, 'b06-phone-portrait-results.png'), full_page=True)
         m.goto(base + '#/')
         time.sleep(0.8)
-        m.screenshot(path=os.path.join(SHOTS, 'b06-phone-portrait-home.png'), full_page=True)
+        m.screenshot(path=os.path.join(SHOTS, 'b07-phone-portrait-home.png'), full_page=True)
+        m.goto(base + '#/settings'); m.wait_for_selector('details.group'); time.sleep(0.3)
+        m.screenshot(path=os.path.join(SHOTS, 'b08-phone-portrait-settings.png'), full_page=True)
+        # The capture screen held upright: contained video and the "turn sideways" nudge.
+        m.goto(base + '#/session/new'); m.wait_for_selector('#ck-go'); m.click('#ck-go')
+        m.wait_for_selector('.fit #fx-actions .btn.primary', timeout=20000); time.sleep(1)
+        results['b_portrait_nudge'] = m.evaluate("!document.querySelector('.fit #fx-nudge').hidden")
+        m.screenshot(path=os.path.join(SHOTS, 'b09-phone-portrait-placing.png'))
+        m.click('.fit #fx-close'); time.sleep(0.4)
         ctx3.close()
         b.close()
     httpd.shutdown()

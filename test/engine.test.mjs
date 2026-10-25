@@ -564,3 +564,40 @@ test('B: a rider-on spindle mark whose foot had moved is dropped, and the ride a
   near(a.metrics.kops.value, trueKopsAtLevel(sim), 5, 'KOPS');
   assert.ok(a.notes.some((n) => /did not agree with the ride/.test(n)));
 });
+
+test('C1: the change says what the retest should show', () => {
+  const { a } = analyseSim({ saddleOffsetMm: -15 });
+  const r = TF.buildResults(a, PROFILE, 'hoods', null, 'metric').recommendation.current;
+  assert.equal(r.expect, 'On the retest, the marks should show the saddle 10 mm higher, and your knee extension should move up towards 140–150°.');
+  const ri = TF.buildResults(a, PROFILE, 'hoods', null, 'imperial').recommendation.current;
+  assert.match(ri.expect, /saddle 3\/8 in higher/);
+});
+
+test('C1: the retest strip reads the bike change from the marks and the measurement change', () => {
+  const a = TF.simulateRider({}), b = TF.simulateRider({ saddleOffsetMm: 8 });
+  const ca = calOf(a.marks, a), cb = calOf(b.marks, b);
+  const sum = TF.retestSummary({ cal: ca }, { cal: cb }, 'kneeExtension', 136.2, 141.4, 'metric');
+  assert.equal(sum.bike, 'saddle +8 mm (measured)', 'drop and reach follow the saddle; the bars did not move');
+  assert.equal(sum.metric, 'knee extension 136° → 141°');
+  assert.equal(sum.cameraMoved, false);
+  const same = TF.retestSummary({ cal: ca }, { cal: calOf(a.marks, a) }, 'kneeExtension', 140, 140, 'metric');
+  assert.equal(same.bike, 'no change to the bike (measured)');
+});
+
+test('C1: the retest strip names a bar change only when the bars themselves moved', () => {
+  const a = TF.simulateRider({});
+  const ca = calOf(a.marks, a);
+  const cb = JSON.parse(JSON.stringify(ca));
+  cb.bikeMeasures.drop += 10;   // bars 10 mm lower (a spacer moved), saddle untouched
+  cb.bikeMeasures.reach += 5;   // and a longer stem
+  const sum = TF.retestSummary({ cal: ca }, { cal: cb }, 'kneeExtension', 140, 140, 'metric');
+  assert.equal(sum.bike, 'bars 10 mm lower, bars 5 mm further forward (measured)');
+});
+
+test('C1: raising the saddle up the seat post is not reported as a setback change; a rail move is', () => {
+  const a = TF.simulateRider({}), b = TF.simulateRider({ saddleOffsetMm: 10 });
+  const ca = calOf(a.marks, a), cb = calOf(b.marks, b);
+  assert.equal(TF.retestSummary({ cal: ca }, { cal: cb }, 'kneeExtension', NaN, NaN, 'metric').bike, 'saddle +10 mm (measured)');
+  const moved = JSON.parse(JSON.stringify(ca)); moved.bikeMeasures.saddleSetback += 8; moved.bikeMeasures.reach += 8;
+  assert.equal(TF.retestSummary({ cal: ca }, { cal: moved }, 'kops', NaN, NaN, 'metric').bike, 'saddle 8 mm further back on its rails (measured)');
+});
