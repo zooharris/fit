@@ -22,7 +22,7 @@ function gaugeHTML(g, flagged) {
     <div class="top"><span class="name">${esc(m.label)}</span><span class="tiny status-${sc}" style="font-weight:600">${esc(statusWord(g))}</span></div>
     <div class="top"><span class="val ${TF.finite(g.value) ? '' : 'none'}">${TF.finite(g.value) ? esc(TF.fmtMetric(g.metric, g.value, u)) : '—'}</span><span class="conf ${g.confidence}" title="${esc(confLabel[g.confidence])}"><i></i><i></i><i></i></span></div>
     ${bar}
-    <div class="about" hidden><b>Target ${esc(TF.fmtBand(g.metric, band, u))}</b> · ${esc(m.where)}<br>${esc(m.about)}<br><span class="faint">${esc(confLabel[g.confidence])}${g.reason ? `: ${esc(g.reason)}` : '.'}</span>${TF.finite(g.spread) && g.spread > 0 ? `<br><span class="faint">Stroke-to-stroke spread ±${esc(m.unit === 'mm' ? TF.fmtLength(g.spread / 2, u, 'adjust') : `${Math.round(g.spread / 2)}°`)}.</span>` : ''}</div>
+    <div class="about" hidden><b>Target ${esc(TF.fmtBand(g.metric, band, u))}</b> · ${esc(m.where)}<br>${esc(m.about)}<br><span class="faint">${esc(confLabel[g.confidence])}${g.reason ? `: ${esc(g.reason)}` : '.'}</span>${TF.finite(g.spread) && Math.round(g.spread / 2) > 0 ? `<br><span class="faint">Stroke-to-stroke spread ±${esc(m.unit === 'mm' ? TF.fmtLength(g.spread / 2, u, 'adjust') : `${Math.round(g.spread / 2)}°`)}.</span>` : ''}</div>
   </button>`;
 }
 const gaugeGrid = (gauges, flagged) => `<div class="gauges">${gauges.slice().sort((a, b) => (flagged.has(b.metric) ? 1 : 0) - (flagged.has(a.metric) ? 1 : 0) || (b.status === 'red' ? 2 : b.status === 'yellow' ? 1 : 0) - (a.status === 'red' ? 2 : a.status === 'yellow' ? 1 : 0)).map((g) => gaugeHTML(g, flagged.has(g.metric))).join('')}</div>`;
@@ -253,13 +253,17 @@ route('/compare/:a/:b', async (main, { a: ida, b: idb }) => {
   const when = (x) => (sameDay ? fmtDateTime(x.session.created) : fmtDate(x.session.created));
   const head = `<tr><th></th><th>${esc(when(older))}<div class="tiny faint">${esc(TF.HAND_POSITIONS[(older.session.clips[0] || {}).hand] || '')}</div></th><th>${esc(when(newer))}<div class="tiny faint">${esc(TF.HAND_POSITIONS[(newer.session.clips[0] || {}).hand] || '')}</div></th><th>Change</th></tr>`;
   main.innerHTML = `
-    <div class="page-head"><div><h1>Compare</h1><div class="sub">${esc(older.rider.name)}${older.rider !== newer.rider ? ` and ${esc(newer.rider.name)}` : ''} · ${esc(fmtDate(older.session.created))} and ${esc(fmtDate(newer.session.created))}</div></div></div>
+    <div class="page-head"><div><h1>Compare</h1><div class="sub">${esc(older.rider.name)}${older.rider !== newer.rider ? ` and ${esc(newer.rider.name)}` : ''} · ${esc(when(older))} and ${esc(when(newer))}</div></div></div>
     <div class="panel tight"><canvas class="compare-shot" id="cmp-shot" style="aspect-ratio:${(newer.session.clips[0] || {}).width || 16}/${(newer.session.clips[0] || {}).height || 9}"></canvas>
       <p class="small muted" style="margin-top:8px"><span class="key orange"></span>${esc(when(newer))} <span class="key grey"></span>${esc(when(older))} (earlier) · both at the bottom of the stroke, lined up on the bottom bracket</p></div>
     <div class="section"><h2>Measurements</h2><div class="panel table-wrap"><table class="cmp">${head}${rows}</table></div></div>
     ${bikeRows ? `<div class="section"><h2>The bike</h2><div class="panel table-wrap"><table class="cmp">${head}${bikeRows}</table></div></div>` : ''}
     <div class="section btn-row"><a class="btn" href="#/session/${older.session.id}">Open the earlier session</a><a class="btn" href="#/session/${newer.session.id}">Open the later session</a><a class="btn quiet" href="#/sessions">Back to sessions</a></div>`;
-  drawCompare($('#cmp-shot', main), aa, older.session, ab, newer.session);
+  const shot = $('#cmp-shot', main);
+  const redraw = () => drawCompare(shot, aa, older.session, ab, newer.session);
+  redraw();
+  const ro = new ResizeObserver(redraw); ro.observe(shot);
+  setCleanup(() => ro.disconnect());
 }, { needsFile: true, nav: 'sessions' });
 
 /** The two bottom-of-stroke skeletons overlaid: the older as a grey ghost on the newer, aligned on the bottom bracket and scaled to the same mm. */
@@ -357,7 +361,7 @@ async function mountPlayer(wrap, r, s, a) {
   const W = clip.width, H = clip.height;
   let blob = clip.file ? await getBlob(clip.file) : null;
   wrap.innerHTML = `<div class="panel tight stack">
-    <div class="row between"><h2>Playback</h2><div class="chips"><button class="chip on" data-t="skeleton">Skeleton</button><button class="chip on" data-t="angles">Angles</button></div></div>
+    <div class="row between"><span class="small faint">Space plays and pauses; arrow keys step a frame</span><div class="chips"><button class="chip on" data-t="skeleton">Skeleton</button><button class="chip on" data-t="angles">Angles</button></div></div>
     <div class="player" style="aspect-ratio:${W}/${H}"><video playsinline muted preload="auto" hidden></video><canvas class="overlay"></canvas><span class="badge"></span></div>
     <div class="controls">
       <input type="range" class="scrub" min="0" max="${(clip.durationS || 1).toFixed(3)}" step="0.001" value="0" aria-label="Position">
@@ -491,13 +495,15 @@ async function makeReport(r, s) {
     const jsPDF = await getJsPDF();
     const a = sessionAnalysis(s), clip = s.clips[0], cal0 = clip.calibration;
     const prof = s.profile || r.profile;
-    const resM = TF.buildResults(a, prof, clip.hand, s.discomfort, 'metric');
-    const resI = TF.buildResults(a, prof, clip.hand, s.discomfort, 'imperial');
+    // The same history and bike numbers as the screen, so the report never says something different.
+    const opts = { history: historyFor(r, s), bikeMeasures: s.bikeMeasures };
+    const resM = TF.buildResults(a, prof, clip.hand, s.discomfort, 'metric', opts);
+    const resI = TF.buildResults(a, prof, clip.hand, s.discomfort, 'imperial', opts);
     const doc = new jsPDF({ unit: 'pt', format: 'letter' });
     const PW = 612, M = 48, ink = [11, 26, 51], ink2 = [68, 84, 108], ink3 = [107, 120, 139], orange = [196, 73, 15];
     const status = { good: [26, 138, 82], warn: [143, 106, 14], bad: [196, 49, 79], none: [138, 150, 168] };
     let y = M;
-    const txt = (t, x, yy, o) => { const op = Object.assign({ size: 10, color: ink, bold: false, width: PW - 2 * M }, o || {}); doc.setFont('helvetica', op.bold ? 'bold' : 'normal'); doc.setFontSize(op.size); doc.setTextColor(...op.color); const lines = doc.splitTextToSize(String(t).replace(/\u2212/g, '-').replace(/\u2009/g, ' '), op.width); doc.text(lines, x, yy); return lines.length * op.size * 1.25; };
+    const txt = (t, x, yy, o) => { const op = Object.assign({ size: 10, color: ink, bold: false, width: PW - 2 * M }, o || {}); doc.setFont('helvetica', op.bold ? 'bold' : 'normal'); doc.setFontSize(op.size); doc.setTextColor(...op.color); const lines = doc.splitTextToSize(String(t).replace(/\u2212/g, '-').replace(/\u2009/g, ' ').replace(/\s*\u2192\s*/g, ' to '), op.width); doc.text(lines, x, yy); return lines.length * op.size * 1.25; };
     const need = (h) => { if (y + h > 792 - M) { doc.addPage(); y = M; } };
     // Header
     const logo = await svgToPng(logoFullSVG(240, { ink: '#0B1A33', bike: '#B4BFD0', bg: '#FFFFFF' }).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '), 240, 240);
@@ -539,7 +545,7 @@ async function makeReport(r, s) {
         for (const x of steps) yy += txt(`• ${x}`, M + 10, yy, { size: 9.5, color: ink2, width: boxW }) + 3;
         y += h + 4;
       }
-      const nexts = [...resM.recommendation.queued.map((q) => q.text), ...resM.recommendation.later.map((l) => `${l.text} (next version)`)];
+      const nexts = [...resM.recommendation.queued.map((q) => q.text.replace(/\.$/, '')), ...resM.recommendation.later.map((l) => `${l.text} (next version)`)];
       if (nexts.length) y += txt(`After that: ${nexts.join('; ')}.`, M, y + 6, { size: 9.5, color: ink3 }) + 4;
     } else {
       y += txt('Saddle height and fore/aft are in range.', M, y + 6, { size: 15, bold: true, color: status.good }) + 6;

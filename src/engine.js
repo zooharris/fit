@@ -1597,7 +1597,7 @@ function withHistory(step, m, targets, history, bikeNow, units) {
 
 function describeOut(pairs, m, targets, units) {
   return pairs.filter(([, c]) => c.status === 'red' || c.status === 'yellow')
-    .map(([k, c]) => `${METRICS[k].label} ${fmtMetric(k, m[k].value, units)} is ${c.side === 'low' ? 'below' : 'above'} ${fmtBand(k, targets[k], units)}`).join('; ') + '.';
+    .map(([k, c]) => `${METRICS[k].label} ${fmtMetric(k, m[k].value, units)} is ${sideWords(m[k].value, targets[k], c.side)} ${fmtBand(k, targets[k], units)}`).join('; ') + '.';
 }
 
 /* ==========================================================================
@@ -1650,7 +1650,7 @@ function discomfortNotes(answers, analysis, targets, units) {
     const list = (arr) => (arr.length === 1 ? arr[0] : `${arr.slice(0, -1).join(', ')} and ${arr[arr.length - 1]}`);
     if (out.length) {
       const o = out[0];
-      note.text = `${capitalise(reg.phrase)} is often associated with ${o.as.cause}. Your ${label(o.as.metric)} is ${fmtMetric(o.as.metric, o.value, units)}, ${o.c.side === 'low' ? 'below' : 'above'} the target range of ${fmtBand(o.as.metric, targets[o.as.metric], units)}, so this is worth checking first.`;
+      note.text = `${capitalise(reg.phrase)} is often associated with ${o.as.cause}. Your ${label(o.as.metric)} is ${fmtMetric(o.as.metric, o.value, units)}, ${sideWords(o.value, targets[o.as.metric], o.c.side)} the target range of ${fmtBand(o.as.metric, targets[o.as.metric], units)}, so this is worth checking first.`;
       const rest = [...new Set(out.slice(1).map((x) => x.as.metric))].filter((k) => k !== o.as.metric);
       if (rest.length) note.text += ` Also outside its range: ${rest.map((k) => `${label(k)} (${fmtMetric(k, analysis.metrics[k].value, units)})`).join(', ')}.`;
       note.text += ' A fit change may or may not help; if the discomfort continues, see a professional.';
@@ -1659,7 +1659,7 @@ function discomfortNotes(answers, analysis, targets, units) {
       const other = uniq.filter((x) => x.c.status !== 'green');
       const parts = [];
       if (green.length) parts.push(`Your ${list(green)} ${green.length > 1 ? 'are' : 'is'} within range`);
-      if (other.length) parts.push(`${green.length ? 'your' : 'Your'} ${list(other.map((x) => `${label(x.metric)} is ${x.c.side === 'low' ? 'below' : 'above'} range`))}, which is not the direction usually associated with ${reg.phrase}`);
+      if (other.length) parts.push(`${green.length ? 'your' : 'Your'} ${list(other.map((x) => `${label(x.metric)} is ${sideWords(x.value, targets[x.metric], x.c.side)} range`))}, which is not the direction usually associated with ${reg.phrase}`);
       if (other.length) {
         note.text = `${parts.join(', and ')}. Any change suggested for those measurements is about the measurements themselves, not this discomfort. ${OTHER_CAUSES}`;
       } else {

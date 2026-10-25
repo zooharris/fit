@@ -264,7 +264,7 @@ route('/sessions', async (main, { query }) => {
     : sessionRow(x.rider, x.session, which === 'all');
   main.innerHTML = `
     <div class="page-head"><div><h1>Sessions</h1><div class="sub">${which === 'all' ? 'Every rider in this file' : esc(cur ? cur.name : '')} · ${plural(items.length, 'session')}</div></div>
-      ${items.length > 1 || selecting ? `<div class="row">${selecting ? '<a class="btn sm quiet" href="#/sessions">Done</a>' : `<a class="btn sm" href="#/sessions?select=1" id="ss-select">${icon('check')}Compare or delete</a>`}</div>` : ''}</div>
+      ${items.length || selecting ? `<div class="row">${selecting ? '<a class="btn sm quiet" href="#/sessions">Done</a>' : `<a class="btn sm" href="#/sessions?select=1" id="ss-select">${icon('check')}Compare or delete</a>`}</div>` : ''}</div>
     ${riders.length > 1 ? `<div class="chips" id="ss-riders" style="margin-bottom:12px">${riders.map((r) => `<button class="chip ${which === r.id ? 'on' : ''}" data-r="${r.id}">${esc(r.name)}</button>`).join('')}<button class="chip ${which === 'all' ? 'on' : ''}" data-r="all">All riders</button></div>` : ''}
     ${selecting ? `<div class="select-bar panel tight"><span class="grow small muted" id="ss-count">Pick two sessions to compare, or any to delete.</span><button class="btn sm" id="ss-compare" disabled>Compare</button><button class="btn sm danger" id="ss-delete" disabled>${icon('trash')}Delete</button></div>` : ''}
     ${items.length ? `<div class="list">${items.map(row).join('')}</div>`

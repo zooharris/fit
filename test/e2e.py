@@ -216,6 +216,14 @@ def main():
         with page.expect_download(timeout=30000) as dl:
             page.click('#rs-report')
         results['report'] = dl.value.suggested_filename
+        rep_path = os.path.join(SHOTS, dl.value.suggested_filename); dl.value.save_as(rep_path)
+        try:
+            import subprocess
+            txt = subprocess.run(['pdftotext', '-layout', rep_path, '-'], capture_output=True, text=True).stdout
+            results['report_says_one_more_step'] = 'One more step' in txt
+            results['report_has_bike'] = 'Your bike (from the marks)' in txt and 'What to do next' in txt
+        except Exception as ex:
+            results['report_text'] = f'not checked: {ex}'
         page.goto(base + '#/settings')
         page.wait_for_selector('details.group')
         page.screenshot(path=os.path.join(SHOTS, 'd01-settings.png'), full_page=True)
